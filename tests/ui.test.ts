@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { PROJECT_ROOT } from '../src/config/index.js';
 import { initDb } from '../src/db/index.js';
 import { createUiApp, slugifyReaderName, plainError } from '../src/ui/app.js';
-import { redactUiOutput } from '../src/ui/jobs.js';
+import { ACTIONS, JobBusyError, UiJobRunner, redactUiOutput, type UiJob } from '../src/ui/jobs.js';
 
 const dossier = {
   version: 3,
@@ -204,6 +204,32 @@ describe('Mac local UI', () => {
     expect(html).toContain('The real article Sift ranked');
     expect(html).toContain('Glad I read it');
     expect(html).not.toContain('article premises');
+  });
+
+  /**
+   * Pressing "Find articles" while the free test run was still going produced
+   * "Run free dry test is already running" — naming a button that no longer
+   * existed, with nothing to click. Labels now come from one place, and a busy
+   * runner sends the reader to the run in progress instead of an error page.
+   */
+  it('sends a reader to the run already in progress instead of refusing', async () => {
+    const runner = new UiJobRunner(fixtureRoot());
+    const busy: UiJob = {
+      id: 'job-1', profileId: 'r', action: 'pipeline_dry', label: ACTIONS.pipeline_dry.label,
+      status: 'running', startedAt: new Date().toISOString(), output: '',
+    };
+    (runner as unknown as { jobs: Map<string, UiJob> }).jobs.set(busy.id, busy);
+    expect(() => runner.start('r', 'pipeline')).toThrow(JobBusyError);
+    try {
+      runner.start('r', 'pipeline');
+    } catch (error) {
+      expect((error as JobBusyError).job.id).toBe('job-1');
+      // The message must name a control the reader has actually seen.
+      expect((error as JobBusyError).message).toContain(ACTIONS.pipeline_dry.label);
+      expect((error as JobBusyError).message).not.toContain('dry test');
+    }
+    expect(runner.running('r')?.id).toBe('job-1');
+    expect(runner.running('other')).toBeNull();
   });
 
   it('rejects a form submitted without its local CSRF token', async () => {

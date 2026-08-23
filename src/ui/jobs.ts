@@ -18,12 +18,35 @@ export interface UiJob {
   output: string;
 }
 
-const ACTIONS: Record<UiAction, { script: string; label: string; dryRun?: boolean }> = {
-  db_setup: { script: 'db:setup', label: 'Initialize database' },
-  pipeline_dry: { script: 'pipeline', label: 'Run free dry test', dryRun: true },
-  pipeline: { script: 'pipeline', label: 'Update recommendations' },
-  source_discover: { script: 'sources:discover', label: 'Discover suggested feeds' },
+/**
+ * Labels live here and are rendered from here, so a button and the job it
+ * starts cannot drift apart. They did: the dashboard buttons were rewritten in
+ * plain language while these kept the old wording, and a reader who pressed
+ * "Find articles now" was told that "Run free dry test" was already running --
+ * naming something they had never seen.
+ */
+export const ACTIONS: Record<UiAction, { script: string; label: string; dryRun?: boolean; takes?: string }> = {
+  db_setup: { script: 'db:setup', label: 'Set up storage' },
+  pipeline_dry: { script: 'pipeline', label: 'Test the setup', dryRun: true, takes: 'a few minutes on the first run — it checks every source' },
+  pipeline: { script: 'pipeline', label: 'Find articles', takes: 'several minutes — it reads and ranks each article' },
+  source_discover: { script: 'sources:discover', label: 'Find suggested sources', takes: 'a minute or two' },
 };
+
+export function actionLabel(action: UiAction): string {
+  return ACTIONS[action].label;
+}
+
+/**
+ * Raised when a run is already in progress for this reader. It carries the job
+ * so the caller can show that run instead of a dead end -- pressing a button
+ * and being told "no" with nothing to click is the worst version of this.
+ */
+export class JobBusyError extends Error {
+  constructor(readonly job: UiJob) {
+    super(`${job.label} is already running for ${job.profileId}.`);
+    this.name = 'JobBusyError';
+  }
+}
 
 const MAX_OUTPUT = 60_000;
 
@@ -65,7 +88,7 @@ export class UiJobRunner {
 
   start(profileId: string, action: UiAction): UiJob {
     const existing = [...this.jobs.values()].find((job) => job.profileId === profileId && job.status === 'running');
-    if (existing) throw new Error(`${existing.label} is already running for ${profileId}.`);
+    if (existing) throw new JobBusyError(existing);
     const definition = ACTIONS[action];
     if (!definition) throw new Error('Unsupported UI action.');
 
@@ -108,6 +131,18 @@ export class UiJobRunner {
     return [...this.jobs.values()]
       .filter((job) => job.profileId === profileId)
       .sort((a, b) => b.startedAt.localeCompare(a.startedAt))[0] ?? null;
+  }
+
+  /** Stop one running job. Returns false when it had already finished. */
+  stop(id: string): boolean {
+    const child = this.processes.get(id);
+    if (!child) return false;
+    child.kill('SIGTERM');
+    return true;
+  }
+
+  running(profileId: string): UiJob | null {
+    return [...this.jobs.values()].find((job) => job.profileId === profileId && job.status === 'running') ?? null;
   }
 
   stopAll(): void {

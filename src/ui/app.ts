@@ -43,7 +43,7 @@ import {
   type AdoptableSource,
 } from '../onboarding/adoptSources.js';
 import { loadConfig } from '../config/index.js';
-import { UiJobRunner, type UiAction } from './jobs.js';
+import { ACTIONS, JobBusyError, UiJobRunner, type UiAction } from './jobs.js';
 
 interface Draft {
   profileId: string;
@@ -689,6 +689,7 @@ export function createUiApp(options: UiAppOptions = {}): Hono {
       const feeds = feedSlugs(projectRoot, id);
       const token = profile.token && profile.token !== 'change-me-please' ? `?t=${encodeURIComponent(profile.token)}` : '';
       const latest = runner.latest(id);
+      const running = runner.running(id);
       const picks = latestPicks(profile.databasePath);
       const spent = spendThisMonth(profile.databasePath);
       const limits = budgetLimits(projectRoot, id);
@@ -756,12 +757,14 @@ export function createUiApp(options: UiAppOptions = {}): Hono {
       <button type="submit">Save</button></form></div></section>
 
       <section class="section card step"><div class="step-number">2</div><div><h2>Find articles</h2><p class="muted">The test run is free and checks that everything is wired up. The real run reads and ranks articles, and is the one that uses your AI credit.</p><div class="actions">
-      ${!profile.databaseExists ? `<form method="post" action="/profile/${id}/action">${hiddenCsrf(csrf)}<input type="hidden" name="action" value="db_setup"><button type="submit">Set up storage</button></form>` : ''}
-      <form method="post" action="/profile/${id}/action">${hiddenCsrf(csrf)}<input type="hidden" name="action" value="pipeline_dry"><button class="secondary" type="submit">Test the setup — free</button></form>
-      <form method="post" action="/profile/${id}/action" data-confirm="Start a real run now? This spends a small amount with your AI service.">${hiddenCsrf(csrf)}<input type="hidden" name="action" value="pipeline"><button type="submit"${profile.aiReady ? '' : ' disabled title="Configure an AI provider first"'}>Find articles now — uses AI credit</button></form>
-      ${profile.sourceCandidates > 0 ? `<form method="post" action="/profile/${id}/action">${hiddenCsrf(csrf)}<input type="hidden" name="action" value="source_discover"><button class="secondary" type="submit">Find sources your assistant suggested</button></form>` : ''}
+      ${!profile.databaseExists ? `<form method="post" action="/profile/${id}/action">${hiddenCsrf(csrf)}<input type="hidden" name="action" value="db_setup"><button type="submit"${running ? ' disabled title="A run is already in progress"' : ''}>${escapeXml(ACTIONS.db_setup.label)}</button></form>` : ''}
+      <form method="post" action="/profile/${id}/action">${hiddenCsrf(csrf)}<input type="hidden" name="action" value="pipeline_dry"><button class="secondary" type="submit"${running ? ' disabled title="A run is already in progress"' : ''}>${escapeXml(ACTIONS.pipeline_dry.label)} — free</button></form>
+      <form method="post" action="/profile/${id}/action" data-confirm="Start a real run now? This spends a small amount with your AI service.">${hiddenCsrf(csrf)}<input type="hidden" name="action" value="pipeline"><button type="submit"${running ? ' disabled title="A run is already in progress"' : profile.aiReady ? '' : ' disabled title="Connect an AI service first"'}>${escapeXml(ACTIONS.pipeline.label)} now — uses AI credit</button></form>
+      ${profile.sourceCandidates > 0 ? `<form method="post" action="/profile/${id}/action">${hiddenCsrf(csrf)}<input type="hidden" name="action" value="source_discover"><button class="secondary" type="submit"${running ? ' disabled title="A run is already in progress"' : ''}>${escapeXml(ACTIONS.source_discover.label)}</button></form>` : ''}
       ${profile.validatedFeeds > 0 ? `<a class="button" href="/profile/${id}/sources">Review ${profile.validatedFeeds} suggested source${profile.validatedFeeds === 1 ? '' : 's'} →</a>` : ''}
-      </div>${latest ? `<p class="hint">Latest: <a href="/job/${latest.id}">${escapeXml(latest.label)} — ${latest.status}</a></p>` : ''}</div></section>
+      </div>${running
+        ? `<p class="hint"><strong>${escapeXml(running.label)} is running now.</strong> <a href="/job/${running.id}">Watch it →</a> Sift runs one job at a time for each reader.</p>`
+        : latest ? `<p class="hint">Last run: <a href="/job/${latest.id}">${escapeXml(latest.label)} — ${escapeXml(latest.status)}</a></p>` : ''}</div></section>
 
       <section class="section card step"><div class="step-number">3</div><div><h2>Teach it what you liked <span class="pill">optional</span></h2>${profile.placements > 0
         ? `<p class="muted">Read a few of the articles above, then tell Sift which were worth your time. It uses your answers to choose better next time.</p><a class="button secondary" href="/profile/${id}/calibration">${profile.calibration === 'completed' ? 'Rate more articles' : 'Rate what you read'}</a>`
@@ -825,6 +828,21 @@ export function createUiApp(options: UiAppOptions = {}): Hono {
       const job = runner.start(id, action);
       return c.redirect(`/job/${job.id}`, 303);
     } catch (error) {
+      // Show the run that is already going rather than refusing with no exit.
+      if (error instanceof JobBusyError) return c.redirect(`/job/${error.job.id}?busy=1`, 303);
+      return c.html(errorPage(error), 400);
+    }
+  });
+
+  app.post('/job/:id/stop', async (c) => {
+    try {
+      const body = await parseForm(c);
+      void body;
+      const job = runner.get(c.req.param('id'));
+      if (!job) throw new Error('That run no longer exists.');
+      runner.stop(job.id);
+      return c.redirect(`/job/${job.id}`, 303);
+    } catch (error) {
       return c.html(errorPage(error), 400);
     }
   });
@@ -832,7 +850,18 @@ export function createUiApp(options: UiAppOptions = {}): Hono {
   app.get('/job/:id', (c) => {
     const job = runner.get(c.req.param('id'));
     if (!job) return c.html(errorPage('Job not found.'), 404);
-    return c.html(page(job.label, `<p class="eyebrow">${job.status}</p><h1>${escapeXml(job.label)}</h1><p class="lede">Reader ${escapeXml(job.profileId)} · started ${escapeXml(job.startedAt.replace('T', ' ').slice(0, 19))}</p><pre>${escapeXml(job.output || 'Starting…')}</pre><div class="actions"><a class="button secondary" href="/profile/${encodeURIComponent(job.profileId)}">Back to dashboard</a></div>`, { refresh: job.status === 'running' ? 2 : undefined }));
+    const busy = c.req.query('busy') === '1';
+    const takes = ACTIONS[job.action]?.takes;
+    const elapsed = Math.round((Date.now() - new Date(job.startedAt).getTime()) / 1000);
+    const banner = busy && job.status === 'running'
+      ? `<div class="card"><strong>This is already running.</strong> Sift runs one job at a time for each reader, so it picked up where you left off rather than starting a second one. When it finishes you can start the next step.</div>`
+      : '';
+    const status = job.status === 'running'
+      ? `Running for ${elapsed < 90 ? `${elapsed} seconds` : `${Math.round(elapsed / 60)} minutes`}${takes ? ` · usually takes ${escapeXml(takes)}` : ''}. You can leave this page open or come back later.`
+      : job.status === 'succeeded'
+        ? 'Finished successfully.'
+        : `Stopped with exit code ${job.exitCode ?? 1}. The output below says why.`;
+    return c.html(page(job.label, `<p class="eyebrow">${job.status}</p><h1>${escapeXml(job.label)}</h1><p class="lede">${status}</p>${banner}<pre>${escapeXml(job.output || 'Starting…')}</pre><div class="actions"><a class="button secondary" href="/profile/${encodeURIComponent(job.profileId)}">Back to ${escapeXml(job.profileId)}</a>${job.status === 'running' ? `<form method="post" action="/job/${encodeURIComponent(job.id)}/stop" data-confirm="Stop this run? Nothing already saved is lost.">${hiddenCsrf(csrf)}<button class="danger" type="submit">Stop this run</button></form>` : ''}</div>`, { refresh: job.status === 'running' ? 3 : undefined }));
   });
 
   /**
