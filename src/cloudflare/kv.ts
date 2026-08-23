@@ -1,6 +1,7 @@
 import { resolve } from 'node:path';
 import { logger } from '../util/log.js';
 import { chunk } from '../util/pool.js';
+import { createHash } from 'node:crypto';
 import { PROJECT_ROOT } from '../config/index.js';
 
 /** wrangler must run where wrangler.toml and its own node_modules live. */
@@ -176,4 +177,27 @@ async function kvBulkWriteViaWrangler(config: CloudflareConfig, entries: KvEntry
   }
 
   return written;
+}
+
+
+/**
+ * Which entries actually need uploading.
+ *
+ * Every push rewrote every key regardless of whether its content had changed —
+ * byte for byte identical when nothing new had published. At 105 keys and eight
+ * pushes a day that is 840 writes against Cloudflare's free-tier limit of
+ * 1,000, so ordinary use hit the daily cap on data that had not changed.
+ */
+export function selectChangedEntries(
+  entries: KvEntry[],
+  previous: Record<string, string>,
+): { changed: KvEntry[]; hashes: Record<string, string>; skipped: number } {
+  const hashes: Record<string, string> = {};
+  const changed: KvEntry[] = [];
+  for (const entry of entries) {
+    const hash = createHash('sha256').update(entry.value).digest('hex').slice(0, 32);
+    hashes[entry.key] = hash;
+    if (previous[entry.key] !== hash) changed.push(entry);
+  }
+  return { changed, hashes, skipped: entries.length - changed.length };
 }

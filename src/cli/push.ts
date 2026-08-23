@@ -1,6 +1,9 @@
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { profileDirectory } from '../onboarding/index.js';
 import { main, printTable } from './_bootstrap.js';
 import { loadFeedItems, renderAtomFeed, renderJsonFeed, renderRssFeed } from '../server/renderFeed.js';
-import { loadCloudflareConfig, kvBulkWrite, type KvEntry } from '../cloudflare/kv.js';
+import { loadCloudflareConfig, kvBulkWrite, selectChangedEntries, type KvEntry } from '../cloudflare/kv.js';
 import { startJob } from '../pipeline/journal.js';
 import { DAY_MS } from '../util/time.js';
 
@@ -14,6 +17,26 @@ import { DAY_MS } from '../util/time.js';
  *
  * Safe to run as often as you like: it overwrites the same keys.
  */
+function readHashes(path: string): Record<string, string> {
+  try {
+    const parsed = JSON.parse(readFileSync(path, 'utf8')) as { keys?: Record<string, string> };
+    return parsed.keys ?? {};
+  } catch {
+    // No record, or an unreadable one: upload everything and rewrite it.
+    return {};
+  }
+}
+
+function writeHashes(path: string, keys: Record<string, string>): void {
+  try {
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, `${JSON.stringify({ version: 1, updated_at: new Date().toISOString(), keys }, null, 2)}\n`);
+  } catch {
+    // Failing to record hashes costs a redundant upload next time, which is far
+    // better than failing a push that already succeeded.
+  }
+}
+
 await main(async ({ db, config }, args) => {
   const cf = loadCloudflareConfig();
   if (!cf && !args.dry) {
@@ -112,18 +135,41 @@ await main(async ({ db, config }, args) => {
         `(${itemUrls.size} item URLs, ${allFeeds.length * 3} feed documents)`,
     );
 
+    // Only upload what actually changed.
+    //
+    // Every push rewrote all 105 keys regardless, byte for byte identical when
+    // nothing new had published. Eight pushes a day is 840 writes against a
+    // free-tier limit of 1,000, so ordinary use ran into Cloudflare's daily cap
+    // on data that had not changed. The hashes of the last successful upload
+    // live beside the profile, so a fresh checkout simply uploads everything
+    // once.
+    const statePath = resolve(profileDirectory(config.env.profileId ?? 'default'), 'kv-state.json');
+    const previous = args.force === true ? {} : readHashes(statePath);
+    // meta:pushed_at is a timestamp and always differs; it is the staleness
+    // signal the Worker's /health reports, and two keys a push is not worth
+    // economising on.
+    const { changed, hashes, skipped } = selectChangedEntries(entries, previous);
+
     if (args.dry) {
       console.log('');
-      console.log('--dry: nothing uploaded.');
-      job.finish({ dryRun: true, keys: entries.length });
+      console.log(`--dry: nothing uploaded. ${changed.length} key(s) would be written, ${skipped} unchanged.`);
+      job.finish({ dryRun: true, keys: changed.length, skipped });
       return;
     }
 
-    const written = await kvBulkWrite(cf!, entries);
-    job.finish({ keys: written, bytes: totalBytes, feeds: allFeeds.length });
+    if (changed.length === 0) {
+      console.log('');
+      console.log('Nothing changed since the last push; nothing uploaded.');
+      job.finish({ keys: 0, skipped, feeds: allFeeds.length });
+      return;
+    }
+
+    const written = await kvBulkWrite(cf!, changed);
+    writeHashes(statePath, hashes);
+    job.finish({ keys: written, skipped, bytes: totalBytes, feeds: allFeeds.length });
 
     console.log('');
-    console.log(`pushed ${written} keys to Cloudflare KV`);
+    console.log(`pushed ${written} key(s) to Cloudflare KV${skipped > 0 ? `, skipped ${skipped} unchanged` : ''}`);
     console.log(`feeds are live at ${config.env.publicUrl}/feed/<slug>.xml`);
 
     // A stale-feed warning is more useful here than anywhere else: this is the
