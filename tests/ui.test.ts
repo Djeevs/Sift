@@ -232,6 +232,33 @@ describe('Mac local UI', () => {
     expect(runner.running('other')).toBeNull();
   });
 
+  /**
+   * /api/status is the one endpoint designed to be piped into other programs —
+   * a menu bar item, a status script. Feed URLs carry the reader's access
+   * token, so they must never appear here, however convenient it would be.
+   */
+  it('reports status for machine clients without leaking a feed token', async () => {
+    const root = fixtureRoot();
+    const app = createUiApp({ projectRoot: root, csrfToken: 'test-csrf' });
+    await app.request('/onboarding/dossier', form({ csrf: 'test-csrf', profile_id: 'api-reader', dossier: JSON.stringify(dossier) }));
+    const preferences = await app.request('/onboarding/dossier', form({ csrf: 'test-csrf', profile_id: 'api-reader2', dossier: JSON.stringify(dossier) }));
+    const draftId = /name="draft_id" value="([^"]+)"/.exec(await preferences.text())?.[1];
+    await app.request('/onboarding/preview', form({ csrf: 'test-csrf', draft_id: draftId!, skip_preferences: 'on' }));
+    await app.request('/onboarding/create', form({ csrf: 'test-csrf', draft_id: draftId!, approval: 'approve' }));
+
+    const response = await app.request('/api/status');
+    expect(response.status).toBe(200);
+    const body = await response.text();
+    expect(body).not.toMatch(/[?&]t=/);
+    const status = JSON.parse(body) as { version: string; profiles: Array<Record<string, unknown>> };
+    expect(status.version).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(status.profiles.length).toBeGreaterThan(0);
+    const profile = status.profiles[0]!;
+    for (const key of ['id', 'active', 'ready', 'picksToday', 'picks', 'needsAttention', 'backgroundService']) {
+      expect(profile, `missing ${key}`).toHaveProperty(key);
+    }
+  });
+
   it('rejects a form submitted without its local CSRF token', async () => {
     const app = createUiApp({ projectRoot: fixtureRoot(), csrfToken: 'test-csrf' });
     const response = await app.request('/onboarding/dossier', form({

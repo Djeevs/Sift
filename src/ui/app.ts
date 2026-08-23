@@ -480,6 +480,30 @@ function latestPicks(databasePath: string, limit = 6): Pick[] {
   }
 }
 
+/** The running version, so a client can tell when it is talking to an old build. */
+function siftVersion(projectRoot: string): string {
+  try {
+    return String(JSON.parse(readFileSync(resolve(projectRoot, 'package.json'), 'utf8')).version ?? '0.0.0');
+  } catch {
+    return '0.0.0';
+  }
+}
+
+/** How many distinct articles Sift chose today, across every feed. */
+function picksToday(databasePath: string, now = new Date()): number {
+  if (databasePath === ':memory:' || !existsSync(databasePath)) return 0;
+  try {
+    const db = new DatabaseSync(databasePath, { readOnly: true });
+    const row = db.prepare(
+      `SELECT COUNT(DISTINCT item_id) AS n FROM published_feed_items WHERE day_key = :d`,
+    ).get({ d: now.toISOString().slice(0, 10) }) as { n: number } | undefined;
+    db.close();
+    return Number(row?.n ?? 0);
+  } catch {
+    return 0;
+  }
+}
+
 const ATTENTION_WORDS: Record<string, string> = {
   under_15: 'under 15 minutes of reading a day',
   '15_30': '15 to 30 minutes of reading a day',
@@ -712,6 +736,61 @@ export function createUiApp(options: UiAppOptions = {}): Hono {
     } catch (error) {
       return c.html(errorPage(error), 400);
     }
+  });
+
+  /**
+   * Machine-readable status, for anything that wants to show Sift's state
+   * without driving the HTML: a menu bar item, a status script, a widget.
+   *
+   * Read-only and loopback-only, like the rest of this server. It deliberately
+   * carries no feed URLs, because those contain the reader's access token and
+   * this is the one endpoint designed to be piped into other programs.
+   */
+  app.get('/api/status', async (c) => {
+    const ids = profileIds(home);
+    const activeProfile = process.env.SIFT_PROFILE?.trim().toLowerCase() ?? null;
+    const profiles = await Promise.all(ids.map(async (id) => {
+      const profile = profileSummary(projectRoot, home, id);
+      const localPublishing = /^https?:\/\/(?:localhost|127\.0\.0\.1)(?::|\/|$)/i.test(profile.publicUrl);
+      const running = runner.running(id);
+      const latest = runner.latest(id);
+      const limits = budgetLimits(projectRoot, home, id);
+      const spent = spendThisMonth(profile.databasePath);
+      const service = serviceState(id);
+      return {
+        id,
+        /**
+         * The reader this process is actually serving feeds and running the
+         * scheduler for. A client with one badge to show should show this one:
+         * summing every profile counts test readers as if they were real.
+         */
+        active: id === activeProfile,
+        ready: profile.databaseExists && profile.aiReady,
+        picksToday: picksToday(profile.databasePath),
+        picks: latestPicks(profile.databasePath, 5).map((pick) => ({
+          title: pick.title,
+          source: pick.source,
+          url: safeHttpUrl(pick.url),
+        })),
+        running: running ? { id: running.id, label: running.label, startedAt: running.startedAt } : null,
+        lastRun: latest && !running
+          ? { label: latest.label, status: latest.status, finishedAt: latest.finishedAt ?? null }
+          : null,
+        feedServer: localPublishing ? (await feedServerRunning(profile.publicUrl) ? 'up' : 'down') : 'remote',
+        backgroundService: { installed: service.installed, running: service.running },
+        spendThisMonth: spent === null ? null : Number(spent.toFixed(4)),
+        monthlyLimit: limits?.hardLimit ?? null,
+        // One sentence a client can show without re-deriving the rules.
+        needsAttention: !profile.databaseExists
+          ? 'Storage is not set up yet'
+          : !profile.aiReady
+            ? 'No AI service connected'
+            : localPublishing && !(await feedServerRunning(profile.publicUrl))
+              ? 'Feed server is not running'
+              : null,
+      };
+    }));
+    return c.json({ version: siftVersion(projectRoot), profiles });
   });
 
   app.get('/profile/:id', async (c) => {
