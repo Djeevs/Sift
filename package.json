@@ -41,6 +41,7 @@
     "cluster:pairs": "tsx src/cli/cluster-pairs.ts",
     "cluster:stats": "tsx src/cli/cluster-stats.ts",
     "build": "tsc -p tsconfig.json && cp src/db/schema.sql dist/db/schema.sql",
+    "app:build": "tsx src/cli/app-build.ts",
     "check-sources": "tsx src/cli/check-sources.ts",
     "classics": "tsx src/cli/classics.ts",
     "cycle": "npm run pipeline && npm run push && npm run pull",

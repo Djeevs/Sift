@@ -78,6 +78,14 @@ interface ProfileSummary {
 }
 
 export interface UiAppOptions {
+  /**
+   * Stops the process. Supplied when Sift is running as an application, where
+   * there is no terminal to press Control-C in: a bundle whose executable is a
+   * shell script has no event loop, so macOS's Quit never reaches it. Quitting
+   * from the page the reader is already looking at is both simpler and more
+   * discoverable than any of the alternatives.
+   */
+  onShutdown?: () => void;
   /** Read-only assets: bundled config defaults, prompts, the onboarding text. */
   projectRoot?: string;
   /**
@@ -626,6 +634,7 @@ export function createUiApp(options: UiAppOptions = {}): Hono {
   const home = options.home ?? options.projectRoot ?? resolveHome();
   const csrf = options.csrfToken ?? randomBytes(24).toString('base64url');
   const runner = options.jobRunner ?? new UiJobRunner(projectRoot, home);
+  const onShutdown = options.onShutdown;
   const drafts = new Map<string, Draft>();
   const app = new Hono();
 
@@ -746,6 +755,19 @@ export function createUiApp(options: UiAppOptions = {}): Hono {
    * carries no feed URLs, because those contain the reader's access token and
    * this is the one endpoint designed to be piped into other programs.
    */
+  app.post('/shutdown', async (c) => {
+    try {
+      await parseForm(c);
+      if (!onShutdown) throw new Error('This copy of Sift was started from a terminal. Press Control-C there to stop it.');
+      // Answer first: the reader should see confirmation rather than a browser
+      // error caused by the server closing mid-response.
+      setTimeout(() => onShutdown(), 250);
+      return c.html(page('Stopped', `<p class="eyebrow">Stopped</p><h1>Sift has shut down.</h1><p class="lede">Your feeds stay where they are, but they will not update until you open Sift again. Nothing was lost.</p>`));
+    } catch (error) {
+      return c.html(errorPage(error), 400);
+    }
+  });
+
   app.get('/api/status', async (c) => {
     const ids = profileIds(home);
     const activeProfile = process.env.SIFT_PROFILE?.trim().toLowerCase() ?? null;
@@ -891,6 +913,7 @@ export function createUiApp(options: UiAppOptions = {}): Hono {
       <details><summary>Static hosting</summary><p>Export feed files, then upload the generated directory to GitHub Pages, Cloudflare Pages, a NAS, or another static host.</p><div class="actions"><code id="export-command">${escapeXml(exportCommand)}</code><button type="button" class="secondary" data-copy="#export-command">Copy command</button></div></details>
       </div></section>
 
+      ${onShutdown ? `<section class="section card"><h2>Quit Sift</h2><p class="muted">Stops Sift on this Mac. Your readers, feeds and settings are kept${service.installed ? ', though the background service will start it again' : ''}.</p><form method="post" action="/shutdown" data-confirm="Quit Sift? Your feeds stop updating until you open it again.">${hiddenCsrf(csrf)}<button class="danger" type="submit">Quit Sift</button></form></section>` : ''}
       ${service.supported ? `<section class="section card step"><div class="step-number">5</div><div><h2>Keep Sift running</h2><p class="muted">${service.installed
         ? service.running
           ? '<span class="good">Sift is running in the background.</span> It starts when you log in, keeps your feeds available, and restarts itself if it stops. You can close this window.'

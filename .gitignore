@@ -20,3 +20,6 @@ worker/wrangler.toml
 
 # Build artifact produced by `npm run share-package`; regenerate, never commit.
 sift-*.tgz
+
+# Built application bundle; regenerate with `npm run app:build`.
+build/

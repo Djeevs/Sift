@@ -41,6 +41,14 @@ const runtime = startRuntime({
   feeds: args['no-feeds'] !== true,
   feedPort: typeof args['feed-port'] === 'string' ? Number(args['feed-port']) : undefined,
   schedule: args.schedule === true,
+  // Only the application path can be quit from the page: a terminal has
+  // Control-C, and taking that away would be worse than adding a button.
+  onShutdown: args.app === true ? () => {
+    // Belt and braces: a shutdown that hangs would leave a process holding
+    // nothing, which is harder to notice than one that never started.
+    setTimeout(() => process.exit(0), 4000).unref();
+    void runtime.stop().then(() => process.exit(0));
+  } : undefined,
 });
 
 log.info('Bound to this Mac only. Press Control-C to stop.');

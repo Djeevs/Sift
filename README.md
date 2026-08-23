@@ -81,7 +81,19 @@ WHY DID THIS DISAPPEAR
 
 ### If you have never used a terminal
 
-You need three things, in this order. It takes about fifteen minutes.
+Someone with a terminal can build you a double-clickable app in one command:
+
+```bash
+npm run app:build
+```
+
+That produces `build/Sift.app`. Double-click it — no terminal window appears,
+and because it was built on your own Mac it carries no quarantine flag, so
+Gatekeeper stays quiet. It still needs Node.js installed; if it is missing, the
+app says so and offers to open the download page.
+
+Doing it yourself, from scratch: three things, in this order, about fifteen
+minutes.
 
 1. **Install Node.js.** Go to <https://nodejs.org>, download the version marked
    **LTS**, open the installer, and accept the defaults. Sift needs version 22

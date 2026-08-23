@@ -41,6 +41,8 @@ export interface RuntimeOptions {
   context: { db: Db; config: AppConfig } | null;
   ui: boolean;
   uiPort: number;
+  /** Supplied by an entry point that can exit; enables the Quit control. */
+  onShutdown?: () => void;
   feeds: boolean;
   /** Overrides the configured feed port; used when running a second instance. */
   feedPort?: number;
@@ -92,7 +94,12 @@ export function startRuntime(options: RuntimeOptions): Runtime {
   let feedUrl: string | null = null;
 
   if (options.ui) {
-    const app = createUiApp({ projectRoot: options.projectRoot, home: resolveHome(), jobRunner: jobs });
+    const app = createUiApp({
+      projectRoot: options.projectRoot,
+      home: resolveHome(),
+      jobRunner: jobs,
+      onShutdown: options.onShutdown,
+    });
     const server = listen('The control panel', options.uiPort, app.fetch, (message) => {
       // Nothing to fall back to: without the panel this process has no purpose.
       log.error(message);
@@ -191,7 +198,15 @@ export function startRuntime(options: RuntimeOptions): Runtime {
     stop: async () => {
       for (const timer of timers) clearTimeout(timer as NodeJS.Timeout);
       jobs.stopAll();
-      await Promise.all(servers.map((server) => new Promise<void>((done) => server.close(() => done()))));
+      await Promise.all(servers.map((server) => new Promise<void>((done) => {
+        // close() alone waits for every keep-alive connection to end, and the
+        // browser that just asked Sift to quit is holding one -- so the servers
+        // released their ports but the process never exited. Drop the sockets,
+        // and do not wait forever for a straggler either.
+        server.close(() => done());
+        server.closeAllConnections?.();
+        setTimeout(done, 2000).unref?.();
+      })));
       context?.db.close();
     },
   };
