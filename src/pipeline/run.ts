@@ -14,6 +14,7 @@ import { allocateTerra } from '../rank/terraAllocation.js';
 import { extractForItems } from '../extract/index.js';
 import { evaluateArticleAccess } from '../extract/access.js';
 import { runDeepEvaluation } from '../ai/deepEval.js';
+import { pendingBatchItemIds } from '../ai/batch.js';
 import { publishEditions } from '../rank/publishEdition.js';
 import { resolveAlternateFormats, suppressDuplicateEpisodes } from '../alternate/index.js';
 import { resolveAuditSamples } from './audit.js';
@@ -222,6 +223,17 @@ async function runPipelineLocked(
        ORDER BY ce.triage_score DESC`,
     );
 
+    // Items already sitting in an unfinished batch keep their `triaged` status,
+    // correctly -- they have not been evaluated yet. Without this they would be
+    // selected and submitted a second time, paying twice for the same
+    // evaluations. They return to the queue on their own when the batch
+    // resolves, so nothing is lost.
+    const inFlight = pendingBatchItemIds(db, 'deep');
+    const selectable = waiting.filter((w) => !inFlight.has(w.id));
+    if (inFlight.size > 0) {
+      log.info(`${inFlight.size} item(s) are waiting on a submitted batch and are not re-offered`);
+    }
+
     const auditIds = new Set(
       db
         .all<{ item_id: string }>(
@@ -233,14 +245,14 @@ async function runPipelineLocked(
         .map((r) => r.item_id),
     );
 
-    const allocation = allocateTerra(db, config, [...stale.map((s) => s.id), ...waiting.map((w) => w.id)], {
+    const allocation = allocateTerra(db, config, [...stale.map((s) => s.id), ...selectable.map((w) => w.id)], {
       configuredBudget: opts.maxDeep ?? config.final.luna_gate.terra_budget_per_run,
       auditIds,
       jobId: job.id,
     });
     result.budget = { ...allocation.budget };
     result.allocation = {
-      candidates: waiting.length + stale.length,
+      candidates: selectable.length + stale.length,
       selected: allocation.selected.length,
       deferred: allocation.deferred.length,
       expired: allocation.expired.length,

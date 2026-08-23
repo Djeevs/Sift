@@ -35,6 +35,7 @@ export interface BatchOutcome {
 export async function submitBatch(
   db: Db,
   ai: AiClient,
+  config: AppConfig,
   stage: 'cheap' | 'deep',
   promptVersion: string,
   requests: BatchRequest[],
@@ -61,7 +62,10 @@ export async function submitBatch(
   const batch = await sdk.batches.create({
     input_file_id: file.id,
     endpoint: '/v1/chat/completions',
-    completion_window: '24h',
+    // From config rather than hardcoded. This is the provider's deadline for
+    // the batch, not how long Sift waits for it -- those became different
+    // things when the run stopped blocking.
+    completion_window: `${Math.round(config.models.models.deep.batch_max_wait_hours)}h` as '24h',
   });
 
   db.run(
@@ -83,16 +87,30 @@ export async function submitBatch(
   return batch.id;
 }
 
-/** Poll one batch until it finishes (or the configured wait expires). */
+/**
+ * Poll one batch, giving up after `maxWaitMs` and leaving it for a later run.
+ *
+ * It used to wait up to `batch_max_wait_hours` inline, which froze the whole
+ * pipeline behind the provider's queue: no publishing, no ingestion, and -- now
+ * that the scheduler shares the process -- no scheduled runs either, for as
+ * long as a batch took. Returning null keeps the batch pending and costs
+ * nothing; the next run picks it up.
+ */
 export async function awaitBatch(
   db: Db,
   ai: AiClient,
   config: AppConfig,
   batchId: string,
-): Promise<BatchOutcome[]> {
+  /** Required, not defaulted: a caller that forgets it would silently restore
+   *  the unbounded wait this exists to remove. */
+  maxWaitMs: number,
+): Promise<BatchOutcome[] | null> {
   const sdk = ai.rawSdk('deep');
-  const intervalMs = config.models.models.deep.batch_poll_interval_seconds * 1000;
-  const deadline = Date.now() + config.models.models.deep.batch_max_wait_hours * 3_600_000;
+  const intervalMs = Math.min(
+    config.models.models.deep.batch_poll_interval_seconds * 1000,
+    Math.max(1000, maxWaitMs),
+  );
+  const deadline = Date.now() + maxWaitMs;
 
   while (Date.now() < deadline) {
     const batch = await sdk.batches.retrieve(batchId);
@@ -142,11 +160,14 @@ export async function awaitBatch(
       throw new Error(`batch ${batchId} ${batch.status}`);
     }
 
+    if (Date.now() + intervalMs >= deadline) break;
     log.info(`batch ${batchId} is ${batch.status}; waiting ${intervalMs / 1000}s`);
     await sleep(intervalMs);
   }
 
-  throw new Error(`batch ${batchId} did not finish within the configured window`);
+  // Still going. Not an error: it stays in batch_jobs and the next run collects.
+  log.info(`batch ${batchId} is not ready yet; leaving it for the next run`);
+  return null;
 }
 
 /**
@@ -222,11 +243,47 @@ export function parseBatchOutput(jsonl: string): BatchOutcome[] {
   return outcomes;
 }
 
+const PENDING = `status IN ('submitted','in_progress','validating','finalizing')`;
+
+export interface PendingBatch {
+  id: string;
+  stage: string;
+  item_ids_json: string;
+  /**
+   * The prompt the batch was submitted under. Results must be stored against
+   * this, not against whatever is configured when they are collected: scores
+   * from different prompt versions are not comparable, and mislabelling them
+   * hides a superseded prompt from the re-scoring pass forever.
+   */
+  prompt_version: string;
+}
+
 /** Batches submitted by an earlier run that are still outstanding. */
-export function pendingBatches(db: Db, stage?: string): Array<{ id: string; stage: string; item_ids_json: string }> {
+export function pendingBatches(db: Db, stage?: string): PendingBatch[] {
   return stage
-    ? db.all(`SELECT id, stage, item_ids_json FROM batch_jobs WHERE status IN ('submitted','in_progress','validating','finalizing') AND stage = :s`, { s: stage })
-    : db.all(`SELECT id, stage, item_ids_json FROM batch_jobs WHERE status IN ('submitted','in_progress','validating','finalizing')`);
+    ? db.all(`SELECT id, stage, item_ids_json, prompt_version FROM batch_jobs WHERE ${PENDING} AND stage = :s`, { s: stage })
+    : db.all(`SELECT id, stage, item_ids_json, prompt_version FROM batch_jobs WHERE ${PENDING}`);
+}
+
+/**
+ * Items already sitting in an unfinished batch.
+ *
+ * Terra selection must skip these. Now that a run submits and returns rather
+ * than waiting, the items keep their `triaged` status -- correctly, since they
+ * have not been evaluated -- and the next run would otherwise select and submit
+ * them a second time, paying twice for the same evaluations.
+ */
+export function pendingBatchItemIds(db: Db, stage = 'deep'): Set<string> {
+  const ids = new Set<string>();
+  for (const batch of pendingBatches(db, stage)) {
+    try {
+      const parsed = JSON.parse(batch.item_ids_json) as unknown;
+      if (Array.isArray(parsed)) for (const id of parsed) ids.add(String(id));
+    } catch {
+      // A malformed list must not stop the run; the batch will fail on its own.
+    }
+  }
+  return ids;
 }
 
 /** Decide sync vs batch for a queue of this size. */

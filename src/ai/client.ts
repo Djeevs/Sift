@@ -158,8 +158,8 @@ export class AiClient {
     );
   }
 
-  private record(role: Role, model: string, usage: Usage, requests = 1): void {
-    const cost = this.priceFor(role, usage);
+  private record(role: Role, model: string, usage: Usage, requests = 1, priceMultiplier = 1): void {
+    const cost = this.priceFor(role, usage) * priceMultiplier;
     this.spent += cost;
     if (!this.db) return;
     this.db.run(
@@ -335,10 +335,19 @@ export class AiClient {
     return this.sdk(role);
   }
 
+  /**
+   * Record usage that went through the batch API.
+   *
+   * Priced at the batch rate, not the sync rate. Reporting the sync price was
+   * meant to keep the ledger conservative, but month-to-date spend is what the
+   * degradation ladder and `affordableTerraCalls` are computed from -- so a
+   * batch-heavy month made the pipeline halve its own allowance and start
+   * degrading at half the real spend. A deliberately wrong number stops being
+   * conservative once something makes decisions from it.
+   */
   recordBatchUsage(role: Exclude<Role, 'embedding'>, usage: Usage, requests: number): void {
-    // Batch pricing is typically half of sync; the ledger reports the sync
-    // price so the number is never an under-estimate.
-    this.record(role, this.modelFor(role), usage, requests);
+    const discount = role === 'deep' ? this.config.models.models.deep.batch_discount : 1;
+    this.record(role, this.modelFor(role), usage, requests, discount);
   }
 }
 

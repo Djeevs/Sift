@@ -352,7 +352,9 @@ export async function runCheapTriage(
   // observations than steady state, and that is a spend decision.
   let auditBudget = config.mode.audit_max_per_run.luna_to_terra;
 
-  await mapPool(items, 6, async (item) => {
+  // Concurrency and the output ceiling come from models.yaml. They were
+  // hardcoded here, so the configured values were silently ignored.
+  await mapPool(items, config.models.models.triage.max_concurrency, async (item) => {
     const source = sourceMap.get(item.source_id);
     const sourceName = source?.name ?? item.source_id;
     const sourcePrior = (source?.quality_prior ?? 0) + (learnedPriors.get(item.source_id) ?? 0);
@@ -387,7 +389,7 @@ export async function runCheapTriage(
               ),
             },
           ],
-          { maxTokens: 220, temperature: 0.1, jsonMode: true },
+          { temperature: 0.1, jsonMode: true },
         );
         usage = completion.usage;
         rawJson = completion.text;

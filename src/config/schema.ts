@@ -266,6 +266,10 @@ export const chatModelSchema = z.object({
   batch_min_items: z.number().int().positive().default(25),
   batch_poll_interval_seconds: z.number().int().positive().default(60),
   batch_max_wait_hours: z.number().positive().default(24),
+  /** Provider batch discount, applied when pricing batch usage in the ledger. */
+  batch_discount: probability.default(0.5),
+  /** Seconds a run may wait for a batch; 0 submits and leaves it to the next. */
+  batch_collect_wait_seconds: z.number().nonnegative().default(90),
 });
 
 export const embeddingModelSchema = z.object({

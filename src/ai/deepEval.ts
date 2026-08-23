@@ -201,13 +201,19 @@ export async function runDeepEvaluation(
   const stats: DeepStats = { evaluated: 0, failed: 0, auditSamples: 0, usedFullText: 0, mode: 'sync' };
 
   // Collect anything an earlier run left in flight before starting new work.
+  const waitMs = config.models.models.deep.batch_collect_wait_seconds * 1000;
   if (!ai.dryRun && ai.supportsBatch('deep')) {
     for (const batch of pendingBatches(db, 'deep')) {
       try {
         log.info(`collecting results from batch ${batch.id} submitted by an earlier run`);
-        const outcomes = await awaitBatch(db, ai, config, batch.id);
+        const outcomes = await awaitBatch(db, ai, config, batch.id, waitMs);
+        if (!outcomes) continue; // still running; it stays pending
         const ids = safeParseArray(batch.item_ids_json);
-        applyOutcomes(db, ai, config, loadCandidates(db, ids), outcomes, stats);
+        // Stored against the prompt it was submitted under, not whatever is
+        // configured now. Scores from different prompt versions are not
+        // comparable, and mislabelling them hides a superseded prompt from the
+        // re-scoring pass permanently.
+        applyOutcomes(db, ai, config, loadCandidates(db, ids), outcomes, stats, batch.prompt_version, true);
       } catch (err) {
         log.warn(`could not collect batch ${batch.id}`, err);
       }
@@ -234,7 +240,8 @@ export async function runDeepEvaluation(
         outputTokens: 0,
       })),
       stats,
-      prompt,
+      prompt.id,
+      false,
     );
     return stats;
   }
@@ -260,8 +267,16 @@ export async function runDeepEvaluation(
         const { model: _model, ...rest } = body;
         return { customId: candidate.id, body: rest };
       });
-      const batchId = await submitBatch(db, ai, 'deep', prompt.id, requests);
-      const outcomes = await awaitBatch(db, ai, config, batchId);
+      const batchId = await submitBatch(db, ai, config, 'deep', prompt.id, requests);
+      const outcomes = await awaitBatch(db, ai, config, batchId, waitMs);
+
+      // Not ready inside the short window. The run continues and publishes what
+      // it already has; the next run collects. Waiting here used to stall
+      // publishing, ingestion and the scheduler behind the provider's queue.
+      if (!outcomes) {
+        log.info(`batch ${batchId} left running; the next run will collect ${candidates.length} evaluations`);
+        return stats;
+      }
 
       // A batch that produced nothing usable must fall through to sync rather
       // than being mistaken for "no items were any good".
@@ -273,7 +288,7 @@ export async function runDeepEvaluation(
         );
       }
 
-      applyOutcomes(db, ai, config, candidates, outcomes, stats, prompt);
+      applyOutcomes(db, ai, config, candidates, outcomes, stats, prompt.id, true);
       return stats;
     } catch (err) {
       // Batch is an optimisation, never a requirement: fall back to sync.
@@ -291,7 +306,9 @@ export async function runDeepEvaluation(
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userMessageFor(db, config, candidate) },
         ],
-        { maxTokens: 1000, temperature: 0.2, jsonMode: true },
+        // No maxTokens override: models.yaml is the only place the ceiling is
+        // set, so the sync and batch paths cannot ask for different limits.
+        { temperature: 0.2, jsonMode: true },
       );
       applyOutcomes(
         db,
@@ -307,7 +324,8 @@ export async function runDeepEvaluation(
           },
         ],
         stats,
-        prompt,
+        prompt.id,
+        false,
       );
     } catch (err) {
       stats.failed += 1;
@@ -333,10 +351,17 @@ function applyOutcomes(
   candidates: DeepCandidate[],
   outcomes: Array<{ customId: string; text: string; inputTokens: number; outputTokens: number; error?: string }>,
   stats: DeepStats,
-  prompt?: LoadedPrompt,
+  /** The prompt these results were produced under, never the current one. */
+  promptVersion: string,
+  /**
+   * Whether these came through the batch API. Taken as an argument rather than
+   * read off stats.mode: collecting an earlier run's batch leaves the mode
+   * 'sync', so the usage of every batch collected on a later run was silently
+   * recorded as zero.
+   */
+  viaBatch: boolean,
 ): void {
   if (outcomes.length === 0) return;
-  const promptVersion = (prompt ?? loadPrompt(config, config.final.terra_gate.prompt)).id;
   const model = ai.modelFor('deep');
   const embeddingModel = ai.modelFor('embedding');
   const anchorVectors = getVectors(db, 'anchor', embeddingModel);
@@ -466,7 +491,7 @@ function applyOutcomes(
   }
 
   // Batch usage is not recorded by the client itself, so log it here.
-  if (stats.mode === 'batch' && (batchInput > 0 || batchOutput > 0)) {
+  if (viaBatch && (batchInput > 0 || batchOutput > 0)) {
     ai.recordBatchUsage('deep', { inputTokens: batchInput, outputTokens: batchOutput }, outcomes.length);
   }
 }

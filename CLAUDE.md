@@ -149,6 +149,19 @@ flat 50% beats caching's effective 44%, because the cacheable prefix is only
 ~70% of input). `terraPathCost()` prints the comparison so it stays checkable if
 prices or prompt sizes change. Don't add sync/batch routing without re-measuring.
 
+A run **submits a batch and returns**; the next run collects it. Waiting inline
+froze publishing, ingestion and the scheduler behind the provider's queue.
+Three things follow, and all three were bugs before they were rules:
+
+- Items in an unfinished batch keep `triaged` and must be excluded from Terra
+  selection (`pendingBatchItemIds`), or the next run pays for them twice.
+- Results are stored against `batch_jobs.prompt_version`, never the currently
+  configured prompt. Mislabelling them hides a superseded prompt from the
+  re-scoring pass permanently.
+- Batch usage is recorded at `batch_discount`, and whether something came via
+  batch is passed explicitly rather than read from `stats.mode` — collecting an
+  earlier run's batch leaves that mode `sync`, so its spend recorded as zero.
+
 ### Clustering
 
 Story identity and *perspective* identity are separate questions, deliberately.

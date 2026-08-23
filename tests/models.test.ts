@@ -105,7 +105,7 @@ describe('request body construction', () => {
   it('uses max_output_tokens from config, and lets a caller override it', () => {
     const ai = new AiClient(config, null);
     expect(ai.buildRequestBody('cheap', messages).max_completion_tokens).toBe(220);
-    expect(ai.buildRequestBody('deep', messages).max_completion_tokens).toBe(700);
+    expect(ai.buildRequestBody('deep', messages).max_completion_tokens).toBe(config.models.models.deep.max_output_tokens);
     expect(ai.buildRequestBody('deep', messages, { maxTokens: 50 }).max_completion_tokens).toBe(50);
   });
 
@@ -131,7 +131,9 @@ describe('batch requests use the same body builder as sync', () => {
     const body = ai.buildRequestBody('deep', messages, { jsonMode: true });
     expect(body).not.toHaveProperty('temperature');
     expect(body.reasoning_effort).toBe('low');
-    expect(body.max_completion_tokens).toBe(700);
+    // Sync and batch must ask for the same ceiling; they once differed,
+    // 1000 against 700, because the sync path overrode the config in code.
+    expect(body.max_completion_tokens).toBe(config.models.models.deep.max_output_tokens);
     expect(body.response_format).toEqual({ type: 'json_object' });
   });
 
@@ -207,9 +209,19 @@ describe('cost accounting', () => {
   it('computes spend from the configured prices', () => {
     const ai = new AiClient(config, null);
     const deep = config.models.models.deep;
+    ai.complete; // sync pricing is exercised through the completion path below
+    const sync = (500_000 / 1e6) * deep.cost_per_1m_input + (100_000 / 1e6) * deep.cost_per_1m_output;
+
+    /**
+     * Batch usage is recorded at the batch rate, not the sync rate. Recording
+     * the sync price was meant to keep the ledger conservative, but
+     * month-to-date spend is what the degradation ladder and the per-run Terra
+     * allowance are computed from — so a batch-heavy month made the pipeline
+     * halve its own allowance and start degrading at half the real spend.
+     */
     ai.recordBatchUsage('deep', { inputTokens: 500_000, outputTokens: 100_000 }, 1);
-    const expected = (500_000 / 1e6) * deep.cost_per_1m_input + (100_000 / 1e6) * deep.cost_per_1m_output;
-    expect(ai.spentUsd).toBeCloseTo(expected, 6);
+    expect(ai.spentUsd).toBeCloseTo(sync * deep.batch_discount, 6);
+    expect(ai.spentUsd).toBeLessThan(sync);
   });
 
   it('does not invent API spend for local Ollama inference', () => {

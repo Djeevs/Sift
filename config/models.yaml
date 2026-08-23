@@ -32,7 +32,10 @@ models:
   deep:
     model: gpt-5.6-terra
     reasoning_effort: low
-    max_output_tokens: 700
+    # 1000, not 700: reasoning tokens count against this ceiling, and the sync
+    # path was overriding the old 700 in code precisely because it truncated.
+    # The override is gone, so this is the only place the limit is set.
+    max_output_tokens: 1000
     max_concurrency: 4
     cost_per_1m_input: 2.00
     cost_per_1m_cached_input: 0.20
@@ -42,7 +45,19 @@ models:
     mode: auto
     batch_min_items: 25
     batch_poll_interval_seconds: 60
+    # The provider's deadline for completing the batch. Distinct from how long
+    # a run waits for it, which is batch_collect_wait_seconds below.
     batch_max_wait_hours: 24
+    # The provider's batch discount, used to price batch usage in the ledger.
+    # Recording batch at the sync rate made month-to-date spend read ~2x high,
+    # which is what the degradation ladder and the per-run allowance are
+    # computed from -- so the pipeline throttled itself on a number that was
+    # wrong. Check this against the provider's pricing page when it changes.
+    batch_discount: 0.5
+    # How long a run may wait for a batch before leaving it to the next run.
+    # 0 means submit and move on. Waiting inline once froze publishing, the
+    # scheduler and ingestion together for as long as the provider took.
+    batch_collect_wait_seconds: 90
 
   # Stage 3 semantic scoring. See `semantic` below for the provider choice.
   embeddings:
