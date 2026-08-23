@@ -32,8 +32,9 @@ clicks or engagement. Two consequences that shape most design decisions:
 ```bash
 npm run pipeline        # the whole funnel; what the scheduler runs
 npm run cycle           # pipeline && push && pull (edge deployment loop)
-npm run ui              # local Mac onboarding/control panel on 127.0.0.1:8790
-npm run serve           # local server + admin UI on :8787
+npm run ui              # control panel (127.0.0.1:8790) + feeds (:8787), one process
+npm run serve           # the same, plus the scheduler; --no-schedule to disable
+npm run service:install # run it in the background via launchd (--dry to preview)
 npm run dev             # same, reloading on change
 npm run onboard         # print/import the personal-assistant onboarding dossier
 npm run calibrate       # optional feedback on real ranked recommendations

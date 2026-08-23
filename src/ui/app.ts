@@ -45,6 +45,7 @@ import {
 import { loadConfig } from '../config/index.js';
 import { ACTIONS, JobBusyError, UiJobRunner, type UiAction } from './jobs.js';
 import { readJobProgress, type JobProgress } from './progress.js';
+import { serviceState } from '../service/launchd.js';
 
 interface Draft {
   profileId: string;
@@ -712,6 +713,7 @@ export function createUiApp(options: UiAppOptions = {}): Hono {
       const token = profile.token && profile.token !== 'change-me-please' ? `?t=${encodeURIComponent(profile.token)}` : '';
       const latest = runner.latest(id);
       const running = runner.running(id);
+      const service = serviceState(id);
       const picks = latestPicks(profile.databasePath);
       const spent = spendThisMonth(profile.databasePath);
       const limits = budgetLimits(projectRoot, id);
@@ -801,6 +803,13 @@ export function createUiApp(options: UiAppOptions = {}): Hono {
       <details><summary>Static hosting</summary><p>Export feed files, then upload the generated directory to GitHub Pages, Cloudflare Pages, a NAS, or another static host.</p><div class="actions"><code id="export-command">${escapeXml(exportCommand)}</code><button type="button" class="secondary" data-copy="#export-command">Copy command</button></div></details>
       </div></section>
 
+      ${service.supported ? `<section class="section card step"><div class="step-number">5</div><div><h2>Keep Sift running</h2><p class="muted">${service.installed
+        ? service.running
+          ? '<span class="good">Sift is running in the background.</span> It starts when you log in, keeps your feeds available, and restarts itself if it stops. You can close this window.'
+          : '<span class="warning">Set up to run in the background, but not running right now.</span>'
+        : 'Right now Sift only runs while a Terminal window is open. Turning this on keeps it running quietly in the background, starting again whenever you log in.'}</p>
+      <form method="post" action="/profile/${id}/action"${service.installed ? ' data-confirm="Stop running Sift in the background? Your feeds stop updating until you start it again."' : ''}>${hiddenCsrf(csrf)}<input type="hidden" name="action" value="${service.installed ? 'service_uninstall' : 'service_install'}"><button type="submit"${service.installed ? ' class="secondary"' : ''}${running ? ' disabled title="A run is already in progress"' : ''}>${escapeXml(service.installed ? ACTIONS.service_uninstall.label : ACTIONS.service_install.label)}</button></form></div></section>` : ''}
+
       <section class="section card"><h2>Your feed links</h2><p class="muted">Paste any of these into a reading app to subscribe. Each link contains a private key — treat it like a password and do not post it anywhere.</p>${localPublishing && !serverUp ? '<p class="warning">Start the feed server first (step 4) or these links will return nothing.</p>' : ''}${feedRows}</section>
       <section class="section card"><h2>Advanced</h2><p class="muted">Stored at ${escapeXml(profile.databasePath)}</p><div class="actions"><form method="post" action="/profile/${id}/action">${hiddenCsrf(csrf)}<input type="hidden" name="action" value="doctor"><button class="secondary" type="submit"${running ? ' disabled title="A run is already in progress"' : ''}>${escapeXml(ACTIONS.doctor.label)}</button></form><a class="button secondary" href="${escapeXml(`${profile.publicUrl}/admin${token}`)}">Open diagnostics</a></div></section>`));
     } catch (error) {
@@ -843,7 +852,7 @@ export function createUiApp(options: UiAppOptions = {}): Hono {
       const id = validateProfileId(c.req.param('id'));
       const body = await parseForm(c);
       const action = field(body, 'action') as UiAction;
-      if (!['db_setup', 'pipeline_dry', 'pipeline', 'source_discover', 'doctor'].includes(action)) throw new Error('Unsupported action.');
+      if (!['db_setup', 'pipeline_dry', 'pipeline', 'source_discover', 'doctor', 'service_install', 'service_uninstall'].includes(action)) throw new Error('Unsupported action.');
       if (action === 'pipeline' && !profileSummary(projectRoot, id).aiReady) {
         throw new Error('Configure an AI provider and API key before running a real recommendation update.');
       }

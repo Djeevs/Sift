@@ -4,7 +4,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { parseEnv } from 'node:util';
 
-export type UiAction = 'db_setup' | 'pipeline_dry' | 'pipeline' | 'source_discover' | 'doctor';
+export type UiAction = 'db_setup' | 'pipeline_dry' | 'pipeline' | 'source_discover' | 'doctor' | 'service_install' | 'service_uninstall';
 
 export interface UiJob {
   id: string;
@@ -32,6 +32,8 @@ export const ACTIONS: Record<UiAction, { script: string; label: string; dryRun?:
   source_discover: { script: 'sources:discover', label: 'Find suggested sources', takes: 'a minute or two' },
   // "Why isn't this working" needs an answer that is not "open a terminal".
   doctor: { script: 'doctor', label: 'Check my setup', takes: 'a few seconds' },
+  service_install: { script: 'service:install', label: 'Keep Sift running', takes: 'a few seconds' },
+  service_uninstall: { script: 'service:uninstall', label: 'Stop keeping Sift running', takes: 'a few seconds' },
 };
 
 export function actionLabel(action: UiAction): string {
