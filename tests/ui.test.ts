@@ -259,6 +259,31 @@ describe('Mac local UI', () => {
     }
   });
 
+  /**
+   * Removing a reader takes a feed key and a database with it, so the dashboard
+   * asks for the name to be typed rather than a box to be ticked — a checkbox
+   * is one mis-click away from the only irreversible-looking action here.
+   */
+  it('will not remove a reader without the name typed exactly', async () => {
+    const root = fixtureRoot();
+    const app = createUiApp({ projectRoot: root, csrfToken: 'test-csrf' });
+    const preferences = await app.request('/onboarding/dossier', form({ csrf: 'test-csrf', profile_id: 'doomed', dossier: JSON.stringify(dossier) }));
+    const draftId = /name="draft_id" value="([^"]+)"/.exec(await preferences.text())?.[1];
+    await app.request('/onboarding/preview', form({ csrf: 'test-csrf', draft_id: draftId!, skip_preferences: 'on' }));
+    await app.request('/onboarding/create', form({ csrf: 'test-csrf', draft_id: draftId!, approval: 'approve' }));
+    expect(existsSync(resolve(root, 'profiles/doomed/taste-profile.yaml'))).toBe(true);
+
+    const wrong = await app.request('/profile/doomed/delete', form({ csrf: 'test-csrf', confirm_name: 'something else' }));
+    expect(wrong.status).toBe(400);
+    expect(existsSync(resolve(root, 'profiles/doomed/taste-profile.yaml'))).toBe(true);
+
+    const right = await app.request('/profile/doomed/delete', form({ csrf: 'test-csrf', confirm_name: 'doomed' }));
+    expect(right.status).toBe(200);
+    expect(existsSync(resolve(root, 'profiles/doomed'))).toBe(false);
+    // Moved, not erased: the page tells the reader where it went.
+    expect(await right.text()).toContain('data/deleted');
+  });
+
   it('rejects a form submitted without its local CSRF token', async () => {
     const app = createUiApp({ projectRoot: fixtureRoot(), csrfToken: 'test-csrf' });
     const response = await app.request('/onboarding/dossier', form({

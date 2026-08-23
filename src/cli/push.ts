@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
-import { profileDirectory } from '../onboarding/index.js';
+import { resolveHome } from '../config/index.js';
 import { main, printTable } from './_bootstrap.js';
 import { loadFeedItems, renderAtomFeed, renderJsonFeed, renderRssFeed } from '../server/renderFeed.js';
 import { loadCloudflareConfig, kvBulkWrite, selectChangedEntries, type KvEntry } from '../cloudflare/kv.js';
@@ -143,7 +143,13 @@ await main(async ({ db, config }, args) => {
     // on data that had not changed. The hashes of the last successful upload
     // live beside the profile, so a fresh checkout simply uploads everything
     // once.
-    const statePath = resolve(profileDirectory(config.env.profileId ?? 'default'), 'kv-state.json');
+    // Kept under data/, not inside the reader's directory. It is a cache of
+    // what was last uploaded, not part of a reader's profile -- and writing it
+    // through profileDirectory meant a bad profile id created a directory that
+    // looked like a reader. One appeared during testing ("dimazln", holding
+    // nothing but this file) and I could not reproduce how. Under data/ the
+    // worst case is a stray cache file that nothing mistakes for a person.
+    const statePath = resolve(resolveHome(), 'data', 'kv-state', `${config.env.profileId ?? 'default'}.json`);
     const previous = args.force === true ? {} : readHashes(statePath);
     // meta:pushed_at is a timestamp and always differs; it is the staleness
     // signal the Worker's /health reports, and two keys a push is not worth

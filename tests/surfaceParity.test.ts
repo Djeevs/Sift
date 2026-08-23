@@ -35,6 +35,7 @@ describe('terminal and web UI stay in step', () => {
       'sources:discover', // find suggested sources
       'sources:adopt',    // follow suggested sources
       'calibrate',        // rate what you read
+      'reader:delete',    // remove a reader
       'doctor',           // check the setup
       'serve',            // publish locally
       'export',           // publish statically

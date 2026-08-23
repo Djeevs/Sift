@@ -59,6 +59,7 @@
     "onboard": "tsx src/cli/onboard.ts",
     "pipeline": "tsx src/cli/pipeline.ts",
     "replay": "tsx src/cli/replay.ts",
+    "reader:delete": "tsx src/cli/reader-delete.ts",
     "review": "tsx src/cli/review.ts",
     "process": "tsx src/cli/process.ts",
     "publish": "tsx src/cli/publish.ts",

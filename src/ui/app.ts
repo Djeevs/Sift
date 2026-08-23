@@ -47,6 +47,7 @@ import { loadConfig } from '../config/index.js';
 import { ACTIONS, JobBusyError, UiJobRunner, type UiAction } from './jobs.js';
 import { readJobProgress, type JobProgress } from './progress.js';
 import { serviceState } from '../service/launchd.js';
+import { deleteReader } from '../onboarding/deleteReader.js';
 
 interface Draft {
   profileId: string;
@@ -922,9 +923,37 @@ export function createUiApp(options: UiAppOptions = {}): Hono {
       <form method="post" action="/profile/${id}/action"${service.installed ? ' data-confirm="Stop running Sift in the background? Your feeds stop updating until you start it again."' : ''}>${hiddenCsrf(csrf)}<input type="hidden" name="action" value="${service.installed ? 'service_uninstall' : 'service_install'}"><button type="submit"${service.installed ? ' class="secondary"' : ''}${running ? ' disabled title="A run is already in progress"' : ''}>${escapeXml(service.installed ? ACTIONS.service_uninstall.label : ACTIONS.service_install.label)}</button></form></div></section>` : ''}
 
       <section class="section card"><h2>Your feed links</h2><p class="muted">Paste any of these into a reading app to subscribe. Each link contains a private key — treat it like a password and do not post it anywhere.</p>${localPublishing && !serverUp ? '<p class="warning">Start the feed server first (step 4) or these links will return nothing.</p>' : ''}${feedRows}</section>
-      <section class="section card"><h2>Advanced</h2><p class="muted">Stored at ${escapeXml(profile.databasePath)}</p><div class="actions"><form method="post" action="/profile/${id}/action">${hiddenCsrf(csrf)}<input type="hidden" name="action" value="doctor"><button class="secondary" type="submit"${running ? ' disabled title="A run is already in progress"' : ''}>${escapeXml(ACTIONS.doctor.label)}</button></form><a class="button secondary" href="${escapeXml(`${profile.publicUrl}/admin${token}`)}">Open diagnostics</a></div></section>`));
+      <section class="section card"><h2>Advanced</h2><p class="muted">Stored at ${escapeXml(profile.databasePath)}</p>
+      <details><summary>Remove this reader</summary>
+        <p class="muted">Removes <strong>${escapeXml(id)}</strong>: its taste profile, settings, feed key and database. Your other readers are untouched.</p>
+        <p class="hint">Nothing is erased — everything is moved into <code>data/deleted/</code> so you can get it back. ${profile.cloudflareConfigured ? '<strong>These feeds are published to Cloudflare and will keep being served</strong> until you remove them there; that stays a terminal operation.' : 'Anyone still subscribed will stop receiving articles.'}</p>
+        <form method="post" action="/profile/${id}/delete">${hiddenCsrf(csrf)}
+        <div class="field"><label for="confirm_name">Type <strong>${escapeXml(id)}</strong> to confirm</label><input id="confirm_name" name="confirm_name" type="text" autocomplete="off" spellcheck="false" placeholder="${escapeXml(id)}" required></div>
+        <button class="danger" type="submit"${running ? ' disabled title="A run is in progress; wait for it to finish"' : ''}>Remove ${escapeXml(id)}</button></form>
+      </details>
+      <div class="actions"><form method="post" action="/profile/${id}/action">${hiddenCsrf(csrf)}<input type="hidden" name="action" value="doctor"><button class="secondary" type="submit"${running ? ' disabled title="A run is already in progress"' : ''}>${escapeXml(ACTIONS.doctor.label)}</button></form><a class="button secondary" href="${escapeXml(`${profile.publicUrl}/admin${token}`)}">Open diagnostics</a></div></section>`));
     } catch (error) {
       return c.html(errorPage(error), 404);
+    }
+  });
+
+  app.post('/profile/:id/delete', async (c) => {
+    try {
+      const id = validateProfileId(c.req.param('id'));
+      const body = await parseForm(c);
+      // Typing the name, not ticking a box. This is the one irreversible-looking
+      // action in the dashboard, and a checkbox is one mis-click away from
+      // taking a reader's feed key with it.
+      if (field(body, 'confirm_name').trim().toLowerCase() !== id) {
+        throw new Error(`Type the reader's name exactly — “${id}” — to confirm.`);
+      }
+      // A run in progress holds the database open and is midway through writing
+      // to it; moving the file out from under it would corrupt both.
+      if (runner.running(id)) throw new Error('A run is in progress for this reader. Wait for it to finish, or stop it first.');
+      const result = deleteReader(id, { home });
+      return c.html(page('Reader removed', `<p class="eyebrow">Removed</p><h1>${escapeXml(result.id)} is gone.</h1><p class="lede">Its files were moved to <code>${escapeXml(result.archivePath ?? '')}</code> rather than erased, so you can still get them back.</p><div class="card"><p>Delete that folder yourself once you are sure. If this reader was published to Cloudflare, its feeds keep being served until you remove them there.</p></div><div class="actions"><a class="button" href="/">Back to your readers</a></div>`));
+    } catch (error) {
+      return c.html(errorPage(error), 400);
     }
   });
 
