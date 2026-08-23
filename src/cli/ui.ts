@@ -1,36 +1,52 @@
 import { spawn } from 'node:child_process';
-import { serve } from '@hono/node-server';
-import { createUiApp } from '../ui/app.js';
-import { UiJobRunner } from '../ui/jobs.js';
+import { startRuntime } from '../server/runtime.js';
 import { PROJECT_ROOT } from '../config/index.js';
-import { loadEnvFile, parseArgs } from './_bootstrap.js';
+import { bootstrap, loadEnvFile, parseArgs } from './_bootstrap.js';
+import { logger } from '../util/log.js';
 
+const log = logger('sift');
+
+/**
+ * Sift Home: the control panel, and the feeds it hands you links to.
+ *
+ * Serving both from one process is the point. They used to be two commands in
+ * two terminal windows, and a reader who ran only this one got feed URLs that
+ * returned nothing.
+ *
+ * The scheduler stays off here unless asked for. Opening a control panel should
+ * not start spending money on a timer; `npm run serve` is the command that says
+ * "keep this running and keep it fresh".
+ */
 loadEnvFile();
 const args = parseArgs();
 const port = Number(typeof args.port === 'string' ? args.port : process.env.SIFT_UI_PORT ?? 8790);
-if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error('UI port must be a whole number from 1024 to 65535.');
-const host = '127.0.0.1';
-const url = `http://${host}:${port}`;
-const jobs = new UiJobRunner(PROJECT_ROOT);
-const app = createUiApp({ projectRoot: PROJECT_ROOT, jobRunner: jobs });
+if (!Number.isInteger(port) || port < 1024 || port > 65535) {
+  throw new Error('The control panel port must be a whole number from 1024 to 65535.');
+}
 
-const server = serve({ fetch: app.fetch, port, hostname: host }, () => {
-  console.log(`Sift Home is running at ${url}`);
-  console.log('It is bound to this Mac only. Press Control-C to stop.');
-  if (args.open !== false && args['no-open'] !== true && process.platform === 'darwin') {
-    const opener = spawn('open', [url], { stdio: 'ignore' });
-    opener.unref();
-  }
-});
-server.on('error', (error: NodeJS.ErrnoException) => {
-  if (error.code === 'EADDRINUSE') console.error(`Sift Home could not start: ${url} is already in use. Try --port ${port + 1}.`);
-  else console.error(`Sift Home could not start: ${error.message}`);
-  process.exitCode = 1;
+// A first launch has no reader and therefore no database. That is the case this
+// screen exists to fix, so it must not be an error.
+let context: ReturnType<typeof bootstrap> | null = null;
+try {
+  context = bootstrap({ syncSources: false });
+} catch (error) {
+  log.warn(`starting the control panel only: ${error instanceof Error ? error.message : String(error)}`);
+}
+
+const runtime = startRuntime({
+  projectRoot: PROJECT_ROOT,
+  context,
+  ui: true,
+  uiPort: port,
+  feeds: args['no-feeds'] !== true,
+  feedPort: typeof args['feed-port'] === 'string' ? Number(args['feed-port']) : undefined,
+  schedule: args.schedule === true,
 });
 
-const shutdown = () => {
-  jobs.stopAll();
-  server.close(() => process.exit(0));
-};
-process.on('SIGINT', shutdown);
-process.on('SIGTERM', shutdown);
+log.info('Bound to this Mac only. Press Control-C to stop.');
+if (args.open !== false && args['no-open'] !== true && process.platform === 'darwin' && runtime.uiUrl) {
+  spawn('open', [runtime.uiUrl], { stdio: 'ignore' }).unref();
+}
+
+process.on('SIGINT', () => void runtime.stop().then(() => process.exit(0)));
+process.on('SIGTERM', () => void runtime.stop().then(() => process.exit(0)));
