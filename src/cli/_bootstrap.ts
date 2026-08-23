@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { parseEnv } from 'node:util';
 import { initDb, type Db } from '../db/index.js';
-import { loadConfig, PROJECT_ROOT, type AppConfig } from '../config/index.js';
+import { loadConfig, PROJECT_ROOT, resolveHome, type AppConfig } from '../config/index.js';
 import { syncSources } from '../ingest/index.js';
 import { logger } from '../util/log.js';
 import { onboardingReminder } from '../onboarding/index.js';
@@ -31,7 +31,9 @@ export function loadEnvFile(): void {
   if (!/^[a-z0-9][a-z0-9_-]{0,63}$/.test(profileId)) {
     throw new Error('--profile/SIFT_PROFILE must be 1-64 lowercase letters, numbers, hyphens, or underscores');
   }
-  const profileEnv = resolve(PROJECT_ROOT, 'profiles', profileId, '.env');
+  // A reader's private .env is state, so it follows SIFT_HOME rather than
+  // living inside a possibly read-only application bundle.
+  const profileEnv = resolve(resolveHome(), 'profiles', profileId, '.env');
   if (!existsSync(profileEnv)) return;
   try {
     // Profile-specific publication URLs and tokens intentionally override the

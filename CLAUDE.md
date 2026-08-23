@@ -208,6 +208,13 @@ the distribution; verify that previously-published items still land in band A/B.
   `data/sift-dev.db`, `test` → `:memory:`; `SIFT_DB_PATH` overrides. Every
   process logs the file it opened. Scripts run without `--env-file=.env` will
   silently open the *development* database and appear to find no data.
+- **`PROJECT_ROOT` reads, `resolveHome()` writes.** Config defaults, prompts,
+  the schema and `profiles/example` ship with the code. Databases, readers,
+  tokens and logs are state and resolve under `SIFT_HOME`, which defaults to
+  `PROJECT_ROOT` — so a checkout behaves exactly as before. They must be
+  separable for a packaged app, whose bundle is read-only and is replaced
+  wholesale on update. Anything writing under `PROJECT_ROOT` is a bug;
+  `npm run home` shows what resolves where.
 - **Prompt versions are not comparable.** Terra scores from different prompt
   versions cannot be pooled; a superseded, more generous prompt will dominate the
   feed forever. `run.ts` re-scores stale evaluations using a configured share of

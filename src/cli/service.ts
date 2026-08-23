@@ -18,7 +18,7 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { resolve } from 'node:path';
-import { PROJECT_ROOT } from '../config/index.js';
+import { PROJECT_ROOT, resolveHome } from '../config/index.js';
 import { loadEnvFile, parseArgs } from './_bootstrap.js';
 import { buildPlist, labelFor, launchctl, plistPath } from '../service/launchd.js';
 
@@ -36,7 +36,7 @@ if (process.platform !== 'darwin') {
 
 const label = labelFor(profile);
 const path = plistPath(label);
-const logDir = resolve(PROJECT_ROOT, 'data', 'logs');
+const logDir = resolve(resolveHome(), 'data', 'logs');
 // Resolved once and written into the service, so what is reported and what the
 // service actually uses cannot disagree.
 const uiPort = Number(typeof args['ui-port'] === 'string' ? args['ui-port'] : process.env.SIFT_UI_PORT ?? 8790);

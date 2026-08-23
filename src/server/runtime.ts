@@ -28,6 +28,7 @@ import { pollFeedbackFeeds, resolveFeedbackFeeds } from '../feedback/reeder.js';
 import { applyLearning } from '../learn/index.js';
 import { startJob } from '../pipeline/journal.js';
 import { LockedError } from '../util/lock.js';
+import { resolveHome } from '../config/index.js';
 import { logger } from '../util/log.js';
 import type { Db } from '../db/index.js';
 import type { AppConfig } from '../config/index.js';
@@ -86,12 +87,12 @@ function listen(
 export function startRuntime(options: RuntimeOptions): Runtime {
   const servers: Server[] = [];
   const timers: NodeJS.Timeout[] = [];
-  const jobs = new UiJobRunner(options.projectRoot);
+  const jobs = new UiJobRunner(options.projectRoot, resolveHome());
   let uiUrl: string | null = null;
   let feedUrl: string | null = null;
 
   if (options.ui) {
-    const app = createUiApp({ projectRoot: options.projectRoot, jobRunner: jobs });
+    const app = createUiApp({ projectRoot: options.projectRoot, home: resolveHome(), jobRunner: jobs });
     const server = listen('The control panel', options.uiPort, app.fetch, (message) => {
       // Nothing to fall back to: without the panel this process has no purpose.
       log.error(message);

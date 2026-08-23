@@ -7,6 +7,7 @@ import { Hono, type Context } from 'hono';
 import { parse as parseYaml } from 'yaml';
 import {
   PROJECT_ROOT,
+  resolveHome,
   feedFileSchema,
   classicsFileSchema,
   modelsFileSchema,
@@ -77,7 +78,14 @@ interface ProfileSummary {
 }
 
 export interface UiAppOptions {
+  /** Read-only assets: bundled config defaults, prompts, the onboarding text. */
   projectRoot?: string;
+  /**
+   * Writable state: readers, databases, tokens. Defaults to `projectRoot` when
+   * one is given, so a test fixture stays a single self-contained directory,
+   * and to SIFT_HOME otherwise.
+   */
+  home?: string;
   csrfToken?: string;
   jobRunner?: UiJobRunner;
 }
@@ -229,8 +237,8 @@ function jsonCount(path: string, property: string): number {
   }
 }
 
-function profileSummary(projectRoot: string, profileId: string): ProfileSummary {
-  const directory = profileDirectory(profileId, projectRoot);
+function profileSummary(projectRoot: string, home: string, profileId: string): ProfileSummary {
+  const directory = profileDirectory(profileId, home);
   const rootEnv = readEnv(resolve(projectRoot, '.env'));
   const profileEnv = readEnv(resolve(directory, '.env'));
   const effectiveEnv = { ...rootEnv, ...profileEnv };
@@ -310,8 +318,8 @@ function profileSummary(projectRoot: string, profileId: string): ProfileSummary 
   };
 }
 
-function feedSlugs(projectRoot: string, profileId: string): Array<{ title: string; slug: string }> {
-  const directory = profileDirectory(profileId, projectRoot);
+function feedSlugs(projectRoot: string, home: string, profileId: string): Array<{ title: string; slug: string }> {
+  const directory = profileDirectory(profileId, home);
   const configPath = (name: string) => existsSync(resolve(directory, name))
     ? resolve(directory, name)
     : resolve(projectRoot, 'config', name);
@@ -418,8 +426,8 @@ function spendThisMonth(databasePath: string): number | null {
 }
 
 /** The configured monthly target and hard limit for the active mode. */
-function budgetLimits(projectRoot: string, profileId: string): { target: number; hardLimit: number } | null {
-  const directory = profileDirectory(profileId, projectRoot);
+function budgetLimits(projectRoot: string, home: string, profileId: string): { target: number; hardLimit: number } | null {
+  const directory = profileDirectory(profileId, home);
   const path = existsSync(resolve(directory, 'budget.yaml'))
     ? resolve(directory, 'budget.yaml')
     : resolve(projectRoot, 'config', 'budget.yaml');
@@ -591,8 +599,9 @@ function errorPage(error: unknown): string {
 
 export function createUiApp(options: UiAppOptions = {}): Hono {
   const projectRoot = options.projectRoot ?? PROJECT_ROOT;
+  const home = options.home ?? options.projectRoot ?? resolveHome();
   const csrf = options.csrfToken ?? randomBytes(24).toString('base64url');
-  const runner = options.jobRunner ?? new UiJobRunner(projectRoot);
+  const runner = options.jobRunner ?? new UiJobRunner(projectRoot, home);
   const drafts = new Map<string, Draft>();
   const app = new Hono();
 
@@ -611,7 +620,7 @@ export function createUiApp(options: UiAppOptions = {}): Hono {
   };
 
   app.get('/', (c) => {
-    const profiles = profileIds(projectRoot).map((id) => profileSummary(projectRoot, id));
+    const profiles = profileIds(home).map((id) => profileSummary(projectRoot, home, id));
     const cards = profiles.length > 0
       ? profiles.map((profile) => `<article class="card stack"><div><span class="pill">${profile.databaseExists ? 'ready' : 'needs setup'}</span><h2 style="margin-top:10px">${escapeXml(profile.id)}</h2><p class="muted">${profile.items.toLocaleString()} articles looked at · ${profile.placements.toLocaleString()} chosen</p></div><a class="button secondary" href="/profile/${encodeURIComponent(profile.id)}">Open dashboard</a></article>`).join('')
       : '<div class="card"><h2>No readers yet</h2><p class="muted">A reader is one person\u2019s set of feeds. Add one to get started \u2014 it takes about five minutes.</p><a class="button" href="/onboarding">Add a reader</a></div>';
@@ -637,7 +646,7 @@ export function createUiApp(options: UiAppOptions = {}): Hono {
     try {
       const body = await parseForm(c);
       const profileId = validateProfileId(slugifyReaderName(field(body, 'profile_id')));
-      if (existsSync(resolve(profileDirectory(profileId, projectRoot), 'taste-profile.yaml'))) throw new Error(`Profile “${profileId}” already exists.`);
+      if (existsSync(resolve(profileDirectory(profileId, home), 'taste-profile.yaml'))) throw new Error(`Profile “${profileId}” already exists.`);
       const dossier = parseDossier(field(body, 'dossier'));
       const proposed = suggestedReaderPreferences(dossier.assistant_preference_hints);
       const id = randomUUID();
@@ -708,15 +717,15 @@ export function createUiApp(options: UiAppOptions = {}): Hono {
   app.get('/profile/:id', async (c) => {
     try {
       const id = validateProfileId(c.req.param('id'));
-      const profile = profileSummary(projectRoot, id);
-      const feeds = feedSlugs(projectRoot, id);
+      const profile = profileSummary(projectRoot, home, id);
+      const feeds = feedSlugs(projectRoot, home, id);
       const token = profile.token && profile.token !== 'change-me-please' ? `?t=${encodeURIComponent(profile.token)}` : '';
       const latest = runner.latest(id);
       const running = runner.running(id);
       const service = serviceState(id);
       const picks = latestPicks(profile.databasePath);
       const spent = spendThisMonth(profile.databasePath);
-      const limits = budgetLimits(projectRoot, id);
+      const limits = budgetLimits(projectRoot, home, id);
       const spendLabel = spent === null ? '—' : `$${spent.toFixed(2)}`;
       const spendCaption = spent === null
         ? 'spent on AI this month'
@@ -840,7 +849,7 @@ export function createUiApp(options: UiAppOptions = {}): Hono {
       };
       const keyName = providerKeyName(selected);
       if (keyName && (apiKey || checked(body, 'clear_api_key'))) updates[keyName] = checked(body, 'clear_api_key') ? '' : apiKey;
-      updateEnv(resolve(profileDirectory(id, projectRoot), '.env'), updates);
+      updateEnv(resolve(profileDirectory(id, home), '.env'), updates);
       return c.redirect(`/profile/${encodeURIComponent(id)}?saved=ai`, 303);
     } catch (error) {
       return c.html(errorPage(error), 400);
@@ -853,7 +862,7 @@ export function createUiApp(options: UiAppOptions = {}): Hono {
       const body = await parseForm(c);
       const action = field(body, 'action') as UiAction;
       if (!['db_setup', 'pipeline_dry', 'pipeline', 'source_discover', 'doctor', 'service_install', 'service_uninstall'].includes(action)) throw new Error('Unsupported action.');
-      if (action === 'pipeline' && !profileSummary(projectRoot, id).aiReady) {
+      if (action === 'pipeline' && !profileSummary(projectRoot, home, id).aiReady) {
         throw new Error('Configure an AI provider and API key before running a real recommendation update.');
       }
       const job = runner.start(id, action);
@@ -882,7 +891,7 @@ export function createUiApp(options: UiAppOptions = {}): Hono {
   const jobView = (jobId: string) => {
     const job = runner.get(jobId);
     if (!job) return null;
-    const profile = profileSummary(projectRoot, job.profileId);
+    const profile = profileSummary(projectRoot, home, job.profileId);
     const progress = readJobProgress(profile.databasePath, {
       staged: job.action === 'pipeline' || job.action === 'pipeline_dry',
       startedAt: new Date(job.startedAt).getTime(),
@@ -951,9 +960,9 @@ export function createUiApp(options: UiAppOptions = {}): Hono {
   app.get('/profile/:id/calibration', (c) => {
     try {
       const id = validateProfileId(c.req.param('id'));
-      const directory = profileDirectory(id, projectRoot);
+      const directory = profileDirectory(id, home);
       if (!existsSync(resolve(directory, 'taste-profile.yaml'))) throw new Error('Profile not found.');
-      const profile = profileSummary(projectRoot, id);
+      const profile = profileSummary(projectRoot, home, id);
       if (!profile.databaseExists) throw new Error('Run the first recommendation update before calibrating.');
       const db = new DatabaseSync(profile.databasePath, { readOnly: true });
       const items = rankedCalibrationItems(db);
@@ -996,11 +1005,11 @@ export function createUiApp(options: UiAppOptions = {}): Hono {
           return { item_id, label: label as RankedCalibrationLabel };
         }),
       };
-      const profile = profileSummary(projectRoot, id);
+      const profile = profileSummary(projectRoot, home, id);
       if (!profile.databaseExists) throw new Error('Profile database not found.');
       const db = new DatabaseSync(profile.databasePath);
       try {
-        applyRankedCalibration(profileDirectory(id, projectRoot), db, answers);
+        applyRankedCalibration(profileDirectory(id, home), db, answers);
       } finally {
         db.close();
       }

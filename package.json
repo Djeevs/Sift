@@ -51,6 +51,7 @@
     "export": "tsx src/cli/export-static.ts",
     "feedback": "tsx src/cli/feedback.ts",
     "funnel": "tsx src/cli/funnel.ts",
+    "home": "tsx src/cli/home.ts",
     "ingest": "tsx src/cli/ingest.ts",
     "inspect": "tsx src/cli/inspect.ts",
     "learn": "tsx src/cli/learn.ts",

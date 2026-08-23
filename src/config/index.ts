@@ -32,6 +32,27 @@ export * from './schema.js';
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const PROJECT_ROOT = resolve(HERE, '../..');
 
+/**
+ * Where Sift keeps state it writes: databases, profiles, logs, locks.
+ *
+ * Separate from PROJECT_ROOT, which holds things Sift only reads -- config
+ * defaults, prompts, the worker, the schema. They are the same directory when
+ * running from a checkout, which is why nothing changes for anyone working in
+ * one.
+ *
+ * They must be separable for a packaged application: an .app bundle is
+ * read-only, and replacing it on update would otherwise delete every reader,
+ * database and feed token. The bundle sets SIFT_HOME to a directory under
+ * ~/Library/Application Support instead.
+ *
+ * Deliberately not auto-detected. A rule that guessed "am I in a bundle?" would
+ * be a rule that could guess wrong about where someone's feed tokens live.
+ */
+export function resolveHome(): string {
+  const configured = process.env.SIFT_HOME?.trim();
+  return configured ? resolve(configured) : PROJECT_ROOT;
+}
+
 export interface Env {
   /** Stable local profile id when a private profile overlay is active. */
   profileId: string | null;
@@ -128,7 +149,7 @@ export function resolveProfileId(): string | null {
 /** Default database file per environment. */
 export function defaultDbPath(env: Environment = resolveEnvironment()): string {
   if (env === 'test') return ':memory:';
-  return resolve(PROJECT_ROOT, 'data', env === 'production' ? 'sift.db' : 'sift-dev.db');
+  return resolve(resolveHome(), 'data', env === 'production' ? 'sift.db' : 'sift-dev.db');
 }
 
 /**
@@ -140,7 +161,7 @@ export function resolveDbPath(): string {
   const explicit = process.env.SIFT_DB_PATH?.trim();
   if (explicit) return explicit === ':memory:' ? explicit : resolve(PROJECT_ROOT, explicit);
   const profileId = resolveProfileId();
-  if (profileId) return resolve(PROJECT_ROOT, 'data', 'profiles', `${profileId}.db`);
+  if (profileId) return resolve(resolveHome(), 'data', 'profiles', `${profileId}.db`);
   return defaultDbPath();
 }
 
@@ -250,7 +271,7 @@ export function loadConfig(options: { configDir?: string; reload?: boolean } = {
     configuredDir
       ? resolve(PROJECT_ROOT, configuredDir)
       : profileId
-        ? resolve(PROJECT_ROOT, 'profiles', profileId)
+        ? resolve(resolveHome(), 'profiles', profileId)
         : baseConfigDir
   );
   // Profile directories are overlays. A generated profile normally contains

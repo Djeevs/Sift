@@ -64,9 +64,9 @@ export function redactUiOutput(raw: string, secrets: string[] = []): string {
     .replace(/(authorization\s*[:=]\s*bearer\s+)[^\s]+/gi, '$1[REDACTED]');
 }
 
-function secretValues(projectRoot: string, profileId: string): string[] {
+function secretValues(projectRoot: string, home: string, profileId: string): string[] {
   const values: string[] = [];
-  for (const path of [resolve(projectRoot, '.env'), resolve(projectRoot, 'profiles', profileId, '.env')]) {
+  for (const path of [resolve(projectRoot, '.env'), resolve(home, 'profiles', profileId, '.env')]) {
     if (!existsSync(path)) continue;
     try {
       const parsed = parseEnv(readFileSync(path, 'utf8'));
@@ -88,7 +88,14 @@ export class UiJobRunner {
   private readonly jobs = new Map<string, UiJob>();
   private readonly processes = new Map<string, ChildProcessWithoutNullStreams>();
 
-  constructor(private readonly projectRoot: string) {}
+  /**
+   * `projectRoot` is where npm scripts run from; `home` is where a reader's
+   * private .env lives, which is state and may sit outside a read-only bundle.
+   */
+  constructor(
+    private readonly projectRoot: string,
+    private readonly home: string = projectRoot,
+  ) {}
 
   start(profileId: string, action: UiAction): UiJob {
     const existing = [...this.jobs.values()].find((job) => job.profileId === profileId && job.status === 'running');
@@ -106,7 +113,7 @@ export class UiJobRunner {
       output: '',
     };
     this.jobs.set(job.id, job);
-    const secrets = secretValues(this.projectRoot, profileId);
+    const secrets = secretValues(this.projectRoot, this.home, profileId);
     const env = { ...process.env };
     if (definition.dryRun) env.SIFT_DRY_RUN = '1';
     const child = spawn('npm', ['run', definition.script, '--', '--profile', profileId], {

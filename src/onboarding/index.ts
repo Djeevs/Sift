@@ -11,6 +11,7 @@ import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import { z } from 'zod';
 import {
   PROJECT_ROOT,
+  resolveHome,
   tasteProfileSchema,
   type ReaderPreferences,
   type TasteProfile,
@@ -419,8 +420,12 @@ export function validateProfileId(profileId: string): string {
   return normalized;
 }
 
-export function profileDirectory(profileId: string, projectRoot = PROJECT_ROOT): string {
-  return resolve(projectRoot, 'profiles', validateProfileId(profileId));
+/**
+ * A reader's private directory. Rooted in SIFT_HOME, not PROJECT_ROOT: this is
+ * state, and it has to survive replacing the application.
+ */
+export function profileDirectory(profileId: string, home = resolveHome()): string {
+  return resolve(home, 'profiles', validateProfileId(profileId));
 }
 
 export function atomicWrite(path: string, content: string): void {
@@ -452,6 +457,11 @@ export function writeOnboardingState(profileDir: string, state: OnboardingState)
 }
 
 export interface CreateProfileOptions {
+  /**
+   * Where this reader's files are written. Named for what it is: everything
+   * createProfile touches is state, so it belongs under SIFT_HOME rather than
+   * beside the code. Tests pass a fixture directory.
+   */
   projectRoot?: string;
   profileId: string;
   dossier: OnboardingDossier;
@@ -475,9 +485,9 @@ export function createProfile(options: CreateProfileOptions): CreatedProfile {
   if (!options.approved) {
     throw new Error('Profile creation requires explicit approval after reviewing the compiled preview.');
   }
-  const projectRoot = options.projectRoot ?? PROJECT_ROOT;
+  const home = options.projectRoot ?? resolveHome();
   const profileId = validateProfileId(options.profileId);
-  const directory = profileDirectory(profileId, projectRoot);
+  const directory = profileDirectory(profileId, home);
   const tastePath = resolve(directory, 'taste-profile.yaml');
   if (existsSync(tastePath) && !options.force) {
     throw new Error(`Profile "${profileId}" already exists. Use --force only after reviewing the existing files.`);
@@ -498,7 +508,7 @@ export function createProfile(options: CreateProfileOptions): CreatedProfile {
   const preferences = options.preferences ?? suggestedReaderPreferences(options.dossier.assistant_preference_hints);
   const taste = compileTasteProfile(options.dossier, preferences);
   const token = options.accessToken ?? randomBytes(32).toString('base64url');
-  const databasePath = resolve(projectRoot, 'data', 'profiles', `${profileId}.db`);
+  const databasePath = resolve(home, 'data', 'profiles', `${profileId}.db`);
 
   mkdirSync(directory, { recursive: true, mode: 0o700 });
   atomicWrite(tastePath, stringifyYaml(taste, { lineWidth: 100 }));
