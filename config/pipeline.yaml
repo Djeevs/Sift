@@ -1,0 +1,154 @@
+# ---------------------------------------------------------------------------
+# pipeline.yaml
+#
+# Mechanics rather than editorial policy: fetching, extraction, clustering,
+# alternate-format matching, feedback and learning.
+#
+# Ranking behaviour lives in free-ranking.yaml, final-ranking.yaml and
+# feed-config.yaml. Nothing in this file decides what surfaces.
+# ---------------------------------------------------------------------------
+
+version: 1
+
+# --- Stage 1: aggregation ---------------------------------------------------
+# Collects content without judging it.
+ingest:
+  poll_interval_minutes: 90
+  # Items already older than this when first seen are ignored, so a feed that
+  # republishes its archive cannot flood the funnel.
+  max_item_age_days: 14
+  max_items_per_source_per_poll: 60
+
+# --- Stage 5 input: full article extraction ---------------------------------
+extraction:
+  enabled: true
+  # Never disable. Sift does not work around paywalls, logins or crawl rules.
+  respect_robots: true
+  max_bytes: 3000000
+  timeout_ms: 20000
+  concurrency: 4
+  per_host_delay_ms: 1500
+  cache_ttl_days: 30
+  min_extracted_chars: 400
+  max_chars_for_model: 14000
+
+# --- Story clustering -------------------------------------------------------
+# Runs before Terra so commodity coverage of one event is not paid for five
+# times. Cluster membership also feeds redundancy and source-uniqueness scoring.
+clustering:
+  time_window_hours: 96
+  # Kept for the legacy single-signal path and for tooling that reports raw
+  # cosine. Story identity is decided by the weighted signals below.
+  similarity_threshold: 0.845
+  title_similarity_threshold: 0.62
+  entity_similarity_threshold: 0.45
+  gist_similarity_threshold: 0.60
+
+  # Unrelated pairs sit around 0.46 cosine, so the bottom half of the range
+  # carries no information. Only the lift above this floor is weighted.
+  embedding_floor: 0.45
+
+  # Weighted signals producing a same-story confidence. Tuned against
+  # tests/fixtures/cluster-pairs.json -- run `npm run cluster:eval` after
+  # changing any of these to see what it does to precision and recall.
+  #
+  # Fitted against the labelled set by grid search with 4-fold cross-validation
+  # (mean held-out F1 0.79, in-sample 0.81 -- the small gap is why these are
+  # trusted). Entity/title/gist weights are deliberately absent from the primary
+  # score: adding them measurably *reduced* F1 from 0.806 to 0.742, because the
+  # regex entity extractor is crude and only a third of items carry a gist. They
+  # are used only when an item has no embedding at all.
+  signal_weights:
+    embedding: 0.83
+    time_proximity: 0.17
+    # Two articles from one source are usually two stories, not one told twice.
+    same_source_penalty: -0.17
+    # Fallback path only, for items missing an embedding.
+    fallback_entities: 0.55
+    fallback_title: 0.30
+    fallback_gist: 0.20
+
+  # Above this confidence, two items are the same story.
+  # At this cut on the labelled set: precision 0.79, recall 0.82, F1 0.81,
+  # and zero UNRELATED pairs merged.
+  same_story_confidence: 0.42
+
+  # Same story does not mean same information. This decides which members of a
+  # cluster still deserve to be evaluated separately.
+  # Tuned asymmetrically on purpose: cheap signals separate "duplicate" from
+  # "different perspective" poorly (best balanced accuracy 0.69), and losing a
+  # genuinely different take costs more than letting a duplicate through. These
+  # settings retain 86% of different-perspective pairs while still suppressing
+  # 44% of duplicates.
+  perspective:
+    title_divergence_weight: 0.60
+    wording_gap_weight: 0.10
+    semantic_overlap_penalty: 0.50
+    # A cluster member at or above this distance is treated as a genuinely
+    # different take and stays eligible rather than being suppressed.
+    distinct_threshold: 0.10
+
+# --- Alternate formats ------------------------------------------------------
+# "This article also exists as a podcast episode." Resolved after deep
+# evaluation; an article and its audio are never two recommendations.
+alternate_formats:
+  enabled: true
+  min_confidence: 0.72
+  weights:
+    explicit_audio_link: 0.55
+    structured_metadata: 0.50
+    embedded_player: 0.35
+    url_mentioned_in_episode: 0.45
+    title_match: 0.30
+    publisher_match: 0.20
+    semantic_similarity: 0.30
+    date_proximity: 0.15
+  title_match_threshold: 0.70
+  semantic_similarity_threshold: 0.80
+  max_date_distance_hours: 96
+  # A plain public deeplink. No Spotify API or account access is used.
+  spotify_links: true
+
+# --- Feedback ---------------------------------------------------------------
+feedback:
+  poll_interval_minutes: 60
+  signal_weights:
+    opened: 0.15          # weak positive: the headline worked, nothing more
+    excellent: 1.00       # strong positive
+    not_for_me: -1.00     # strong negative
+    not_opened: 0.0       # explicitly no signal
+  dedupe_opens: true
+
+# --- Learning ---------------------------------------------------------------
+# Slow, bounded, interpretable. Adjusts learned source and category value; never
+# overwrites the priors configured in sources.yaml.
+learning:
+  enabled: true
+  learning_rate: 0.04
+  # Bayesian-style smoothing: 2 good posts out of 2 must not make a source
+  # perfect. A source's observed value is blended toward the prior mean until it
+  # has this many observations behind it.
+  prior_strength: 12
+  value_function:
+    surfaced: 0.0
+    opened: 1.0
+    explicit_positive: 5.0
+    explicit_negative: -5.0
+  max_learned_source_value: 0.40
+  min_learned_source_value: -0.25
+  max_interest_weight: 2.0
+  min_interest_weight: 0.2
+  min_events_before_update: 8
+  # Editorial floors engagement can never lift.
+  protected_penalties:
+    ragebait: -1.30
+    outrage: -1.00
+    engagement_bait: -1.00
+    corporate_pr: -0.80
+  # A click on ragebait teaches nothing.
+  ignore_opens_when_ragebait_above: 0.35
+  exploration_fraction: 0.20
+
+# --- Cost reporting ---------------------------------------------------------
+costs:
+  monthly_budget_warning: 15.0

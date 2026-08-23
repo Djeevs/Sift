@@ -1,0 +1,300 @@
+# ---------------------------------------------------------------------------
+# free-ranking.yaml
+#
+# Stage 2 (rule filtering) and stage 3 (free scoring). Everything here is free:
+# no model calls, deterministic, and reproducible from stored components.
+#
+# Stage 3 answers ONE question, and it is not "is this article good?":
+#
+#     Is this article worth spending money to understand?
+#
+# Every component is stored per item (free_score_components), so a score can
+# always be taken apart rather than trusted.
+# ---------------------------------------------------------------------------
+
+version: 4
+
+# --- Stage 2: deterministic rule filtering ----------------------------------
+# High precision and deliberately conservative for editorial judgements. The
+# language/access policy is intentionally stricter: non-English, uncertain-
+# language and non-readable items are ineligible before any model call.
+rule_filter:
+  enabled: true
+  # Bumped whenever the rules below change, and recorded on every evaluation so
+  # old decisions stay interpretable.
+  filter_version: 4
+
+  title_patterns:
+    - '^sponsored[:\s]'
+    - '^\[sponsored\]'
+    - '^ad[:\s]'
+    - '^advertisement\b'
+    - '\bpaid partnership\b'
+    - '^job[s]? (board|listing|alert)'
+    - '^hiring[:\s]'
+    - '^we[''’]re hiring\b'
+    - '^now hiring\b'
+    - '^(weekly|daily|monthly) (deals|discounts|sale)\b'
+    - '^deals?[:\s].*\b(off|discount|sale)\b'
+    - '\bgiveaway\b'
+    - '^open thread\b'
+    - '^comments? of the (week|day)\b'
+  url_patterns:
+    - '/sponsored/'
+    - '/advertorial/'
+    - '/jobs?/'
+    - '/careers?/'
+    - '/deals?/'
+    - 'utm_medium=paid'
+  feed_category_blocklist:
+    - sponsored
+    - advertisement
+    - jobs
+    - careers
+    - deals
+    - press release
+    - press releases
+    - promotions
+
+  min_title_length: 8
+  # Short items are flagged, never dropped: link blogs are legitimately terse.
+  thin_content_chars: 120
+  drop_duplicate_urls: true
+  # Podcast-feed entries exist only for alternate-format matching. They are not
+  # recommendation candidates and are excluded here rather than deeper in.
+  drop_podcast_items: true
+  english_only: true
+  # Eligibility list for linked discovery items. Source-level access policy
+  # handles configured feeds; this catches HN links before they consume ranking.
+  paywall_hosts:
+    - stratechery.com
+    - bloomberg.com
+    - bloomberglaw.com
+    - wsj.com
+    - ft.com
+    - nytimes.com
+    - washingtonpost.com
+    - economist.com
+    - theinformation.com
+    - theatlantic.com
+    - newyorker.com
+    - defector.com
+    - aftermath.site
+    - 404media.co
+    - thediff.co
+    - pragmaticengineer.com
+    - lennysnewsletter.com
+    - construction-physics.com
+
+  # Time-sensitive content past its useful life. Applies only to content types
+  # whose freshness curve says they expire (see freshness below).
+  stale_news_days: 5
+  max_item_age_days: 14
+
+# --- Stage 3: free score ----------------------------------------------------
+# score = sum(weight_i * component_i) - sum(penalty_j * penalty_component_j)
+# Weights are normalised by their own total, so the positive part lands in 0..1
+# and penalties subtract from it. Defaults reasoning:
+#   source_quality_prior extends a modest benefit of the doubt, but semantic
+#   interest and editorial type dominate so a good source cannot carry a weak item.
+#   source_uniqueness was third, but is currently switched off -- see below.
+#
+# source_uniqueness_score is deliberately 0.
+#
+# It is derived from how often a source's items cluster with other sources'.
+# While clustering was inert (average cluster size 1.02, so essentially nothing
+# ever clustered) every source scored as perfectly unique, and the component
+# contributed a near-constant 0.15 to every item -- 15% of the weight measuring
+# nothing. Clustering has since been rebuilt and measured, but uniqueness needs
+# a stretch of real multi-item clusters before its numbers mean anything.
+#
+# Restore this to ~0.15 only once `npm run cluster:stats` reports a healthy
+# multi-item cluster rate and uniqueness_calibrated is true. The weight freed up
+# here has gone to semantic_interest, which is measured and reads the actual words.
+free_ranking:
+  weights:
+    source_quality_prior: 0.12
+    category_prior: 0.06
+    keyword_interest_score: 0.09
+    semantic_interest_score: 0.38
+    freshness_score: 0.13
+    editorial_type_score: 0.17
+    # Neutral at 0.5 for RSS. Exceptional HN engagement can move the free score
+    # only a few points; it is evidence of discovery opportunity, not personal fit.
+    discovery_signal: 0.05
+    source_uniqueness_score: 0.00
+
+  penalties:
+    source_volume_penalty: 0.15
+    redundancy_penalty: 0.20
+    clickbait_penalty: 0.20
+    negative_interest_penalty: 0.25
+
+  # --- Bands ---------------------------------------------------------------
+  # Decides who pays for a Luna call.
+  #
+  # Recalibrated 2026-08-22 on 646 eligible non-podcast items using the new taste,
+  # source-access and discovery weights: p85 0.396, p55 0.299, p30 0.242. This
+  # keeps roughly 45% eligible for Luna before the run budget, while the lower
+  # source prior prevents brand reputation from substituting for article merit.
+  #
+  # Re-check with `npm run bands` after changing any weight above. Changing these
+  # affects future items only: bands already stored keep the config hash they were
+  # decided under, so old decisions stay interpretable.
+  bands:
+    a_min: 0.396         # always sent to Luna              (~15% of items)
+    b_min: 0.299         # sent while the run's budget lasts (~30%)
+    c_min: 0.242         # rejected, but sampled for audit   (~25%)
+                         # below c_min: rejected (D)         (~30%)
+  # Ceiling on Luna calls per run. Band A is always served; band B fills what
+  # is left. Sized against the target funnel (~3,000-4,000 Luna calls/month).
+  luna_budget_per_run: 140
+
+  # --- Audit sampling at the free/Luna boundary ---------------------------
+  audit:
+    # Band C is the interesting population: nearly good enough.
+    band_c_sample_rate: 0.06
+    band_d_sample_rate: 0.01
+    max_per_run: 8
+
+  # --- Keyword interest ---------------------------------------------------
+  # A cheap lexical signal, complementary to embeddings rather than a substitute.
+  # Terms come from taste-profile.yaml (strong_interests); these tune the shape.
+  keyword:
+    title_weight: 2.0        # a match in the title means more than in the body
+    summary_weight: 1.0
+    # Matches saturate: five mentions of "agents" is not five times one.
+    saturation_at: 3
+    # Multi-word interests ("videogame design") rarely appear verbatim in a
+    # headline. All their words appearing separately earns this fraction of a
+    # full phrase match; without it the component reads ~0.02 and its weight is
+    # wasted.
+    partial_phrase_credit: 0.6
+
+  # --- Semantic interest --------------------------------------------------
+  semantic:
+    # What gets embedded for an item: source name, title, subtitle, RSS summary.
+    include_source_name: true
+    max_chars: 1200
+    # Mean of the top-k anchor similarities rather than the single best, which is
+    # noisy on short texts.
+    top_k_anchors: 3
+    # Raw cosine against these anchors sits in a narrow band, so it is rescaled
+    # to spread the useful range across 0..1.
+    rescale_min: 0.10
+    rescale_max: 0.55
+    # Similarity to avoid_anchors feeds negative_interest_penalty.
+    negative_rescale_min: 0.15
+    negative_rescale_max: 0.50
+
+  # --- Editorial type ------------------------------------------------------
+  # What *kind* of thing this looks like, from cheap textual signals. Deliberately
+  # crude: it only needs to separate "essay" from "press release".
+  editorial_type:
+    scores:
+      analysis: 0.90
+      essay: 0.90
+      criticism: 0.88
+      explainer: 0.85
+      interview: 0.70
+      history: 0.85
+      review: 0.65
+      linkblog: 0.60
+      news: 0.40
+      announcement: 0.30
+      listicle: 0.20
+      unknown: 0.55
+    # First matching pattern wins, so order matters.
+    patterns:
+      listicle: ['^\d+\s+(best|worst|things|ways|tips|reasons)', '\b(top|best)\s+\d+\b']
+      announcement: ['\bannounce[sd]?\b', '\bunveil(s|ed)?\b', '\blaunche[sd]\b', '\bnow available\b', '\bintroducing\b', '\bpartners? with\b', '\braises? \$', '\bfunding round\b', '\bappoints?\b']
+      news: ['\breport(s|ed)?\b', '\bsays\b', '\baccording to\b', '\bconfirm(s|ed)\b', '\bbreaking\b']
+      interview: ['\binterview\b', '\bin conversation with\b', '\ba conversation with\b', '\bQ&A\b']
+      review: ['\breview\b', '\bhands[- ]on\b', '\bfirst impressions\b']
+      criticism: ['\bcriticism\b', '\bclose reading\b', '\bon the design of\b', '\bwhat .* gets (right|wrong)\b']
+      history: ['\bhistory of\b', '\bin \d{4}\b', '\barchive\b', '\boral history\b', '\bthe making of\b', '\bpart \d+\b']
+      explainer: ['\bhow (does|do|to)\b', '\bwhy (does|do|is|are)\b', '\bexplained\b', '\bwhat is\b', '\ba guide to\b']
+      essay: ['\bessay\b', '\bnotes on\b', '\bagainst\b', '\bin praise of\b', '\bon being\b']
+      analysis: ['\banalysis\b', '\bwhat it means\b', '\bimplications\b', '\blessons\b', '\bteardown\b', '\bdeep dive\b']
+
+  # --- Clickbait ------------------------------------------------------------
+  # Structural tells only. Judging manipulation properly is Terra's job.
+  clickbait:
+    patterns:
+      - '\byou won[''’]t believe\b'
+      - '\bthis is why\b'
+      - '\bwhat happened next\b'
+      - '\bgoes viral\b'
+      - '\bslams?\b'
+      - '\bdestroys?\b'
+      - '\bshocking\b'
+      - '\bfurious\b'
+      - '\beveryone is\b'
+      - '\bnobody is talking about\b'
+      - '\bthe real reason\b'
+      - '\?!+$'
+    # An all-caps headline is NOT treated as clickbait by default, and the
+    # default is off for a reason: caps are frequently legitimate. Acronym-dense
+    # titles ("NASA JWST IR SPECTRA"), short emphatic-but-honest headlines, and
+    # publishers who simply set every title in caps would all be penalised — and
+    # the last case would quietly downgrade an entire source rather than an
+    # article. Enable only if you see real shouting from a source you keep.
+    # (Detection lives in code, not in `patterns`: patterns here are compiled
+    # case-insensitively, so an all-caps regex would match any letters-only title.)
+    shouting_enabled: false
+    shouting_uppercase_ratio: 0.9
+    shouting_min_length: 24
+    per_match: 0.35
+    max: 1.0
+
+  # --- Freshness, per content type -----------------------------------------
+  # One global decay curve would be wrong: a Digital Antiquarian history piece is
+  # not stale at three weeks, and a hardware rumour is stale in a day.
+  # half_life_days: days at which freshness reaches 0.5. expires_after_days:
+  # beyond this the rule filter may drop it as stale (null = never).
+  freshness:
+    default_content_type: unknown
+    curves:
+      news:          { half_life_days: 1.0,  expires_after_days: 5,    floor: 0.05 }
+      announcement:  { half_life_days: 3.0,  expires_after_days: 21,   floor: 0.10 }
+      review:        { half_life_days: 14.0, expires_after_days: null, floor: 0.30 }
+      interview:     { half_life_days: 21.0, expires_after_days: null, floor: 0.35 }
+      analysis:      { half_life_days: 21.0, expires_after_days: null, floor: 0.40 }
+      explainer:     { half_life_days: 45.0, expires_after_days: null, floor: 0.55 }
+      essay:         { half_life_days: 90.0, expires_after_days: null, floor: 0.65 }
+      criticism:     { half_life_days: 90.0, expires_after_days: null, floor: 0.65 }
+      history:       { half_life_days: 365.0, expires_after_days: null, floor: 0.80 }
+      listicle:      { half_life_days: 2.0,  expires_after_days: 10,   floor: 0.05 }
+      linkblog:      { half_life_days: 5.0,  expires_after_days: 30,   floor: 0.20 }
+      unknown:       { half_life_days: 14.0, expires_after_days: null, floor: 0.30 }
+
+  # --- Source volume penalty ------------------------------------------------
+  # Diminishing returns, not a cap. An exceptional fourth item still survives.
+  # Applied to items from the same source within one run, best first.
+  source_volume:
+    decay: [1.00, 0.92, 0.82, 0.68, 0.50, 0.36, 0.25]
+    # Everything past the decay list gets this multiplier.
+    tail: 0.18
+    # A source's volume_budget stretches or compresses the curve: a source with
+    # budget 0.25 hits the steep part four times faster.
+    budget_scales_decay: true
+    # Final safety valve for a feed that floods (a re-published archive, say).
+    hard_cap_per_run: 25
+
+  # --- Redundancy -----------------------------------------------------------
+  # Near-duplicate of something already scored in this window.
+  redundancy:
+    near_duplicate_similarity: 0.94
+    # Applied when the item joins a cluster that already has better members.
+    cluster_member_penalty: 0.45
+    # A same-cluster item from a *differentiated* source is penalised less: that
+    # is the technical-explainer-plus-sceptical-critique case worth keeping.
+    differentiated_source_relief: 0.5
+
+  # --- Exploration ----------------------------------------------------------
+  # A source with too little history to score fairly gets a floor, so new and
+  # rarely-surfaced sources cannot vanish permanently.
+  exploration:
+    min_items_for_confidence: 25
+    # Blend toward the source's exploration_floor when below that count.
+    floor_blend: 0.6

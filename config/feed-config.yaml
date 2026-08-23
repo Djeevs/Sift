@@ -1,0 +1,256 @@
+# ---------------------------------------------------------------------------
+# feed-config.yaml
+#
+# The six generated feeds. Each has its own goal, so each has its own formula,
+# gates, budget and diversity settings. `mode: serendipity` swaps the weighted
+# sum for a multiplicative one.
+#
+# score is computed from Terra's dimensions, then adjusted by the portfolio rules
+# in final-ranking.yaml as the edition is assembled.
+# ---------------------------------------------------------------------------
+
+version: 1
+
+# The taxonomy Luna and Terra may assign. Keep small and stable.
+categories:
+  - ai_product
+  - ai_advancement
+  - tech_strategy
+  - new_technology
+  - ideas_science
+  - society
+  - business_economics
+  - science
+  - games
+  - games_industry
+  - culture
+  - internet_culture
+  - wildcard
+  - other
+
+feeds:
+  # --- Essential ------------------------------------------------------------
+  # The few things each day that were unambiguously worth the attention.
+  # Cross-category by design; no single category may dominate.
+  - id: essential
+    slug: essential
+    title: "Sift · Essential"
+    description: >
+      The few things each day that were unambiguously worth the attention.
+      Cross-category, very high bar.
+    mode: weighted
+    daily_cap: 8
+    target_items_per_day: [3, 8]
+    attention:
+      minutes_per_day: 45
+    min_score: 0.72
+    categories: []
+    weights:
+      personal_interest: 1.00
+      intellectual_depth: 0.85
+      novelty: 0.75
+      practical_usefulness: 0.45
+      entertainment: 0.55
+      storytelling: 0.45
+      authorial_voice: 0.45
+      critique: 0.30
+      humor: 0.20
+      obsessive_expertise: 0.35
+      rabbit_hole: 0.35
+      delight: 0.55
+      headline_sufficiency: -1.10
+      source_quality: 0.20
+      expected_attention_value: 1.00
+      ragebait: -2.20
+      duplicate_information: -0.90
+    gates:
+      max_ragebait: 0.25
+      min_expected_attention_value: 0.70
+    diversity:
+      # Stricter than the global default: Essential lives or dies on breadth.
+      max_per_category_per_day: 3
+      source_decay: [1.00, 0.70, 0.45]
+      cluster_decay: [1.00, 0.30]
+
+  # --- AI × Product × UX ----------------------------------------------------
+  - id: ai_product
+    slug: ai-product
+    title: "Sift · AI × Product × UX"
+    description: >
+      Major AI capabilities, novel products and interfaces, new technology, and
+      platform strategy — with implications, not press-release recaps.
+    mode: weighted
+    daily_cap: 10
+    target_items_per_day: [2, 6]
+    attention:
+      minutes_per_day: 50
+    # Kept permissive at the feed stage because the independent Terra dimensions
+    # and hard gates already carry the editorial burden.
+    min_score: 0.46
+    categories: [ai_product, ai_advancement, tech_strategy, new_technology]
+    weights:
+      personal_interest: 1.00
+      intellectual_depth: 0.70
+      novelty: 0.80
+      practical_usefulness: 0.80
+      entertainment: 0.30
+      authorial_voice: 0.25
+      critique: 0.35
+      delight: 0.55
+      headline_sufficiency: -1.30
+      source_quality: 0.15
+      expected_attention_value: 0.70
+      ragebait: -1.40
+      duplicate_information: -1.30    # repetitive AI news is the main failure mode here
+    gates:
+      max_ragebait: 0.35
+      max_duplicate_information: 0.55
+    diversity:
+      max_per_category_per_day: 10
+
+  # --- Ideas × Science ------------------------------------------------------
+  # Exploratory and timeless material welcome; freshness matters least here.
+  - id: ideas_science
+    slug: ideas-science
+    title: "Sift · Ideas × Science"
+    description: >
+      Societal change, strange business and economic mechanisms, major science,
+      and surprising explanations of how the world works.
+    mode: weighted
+    daily_cap: 10
+    target_items_per_day: [2, 6]
+    attention:
+      minutes_per_day: 60
+    min_score: 0.48
+    categories: [ideas_science, society, business_economics, science]
+    freshness_weight: 0.25          # de-emphasise recency in this feed
+    weights:
+      personal_interest: 0.80
+      intellectual_depth: 1.00
+      novelty: 0.90
+      practical_usefulness: 0.25
+      entertainment: 0.50
+      storytelling: 0.45
+      authorial_voice: 0.35
+      obsessive_expertise: 0.55
+      rabbit_hole: 0.55
+      delight: 0.45
+      headline_sufficiency: -0.80
+      source_quality: 0.20
+      expected_attention_value: 0.70
+      ragebait: -1.30
+      duplicate_information: -0.70
+    gates:
+      max_ragebait: 0.40
+    diversity:
+      max_per_category_per_day: 10
+
+  # --- Games × Interactive Art ---------------------------------------------
+  - id: games
+    slug: games
+    title: "Sift · Games × Interactive Art"
+    description: >
+      Platform and hardware strategy, distribution, studio economics, major
+      announcements and surprising industry stories. Not routine reviews or craft.
+    mode: weighted
+    daily_cap: 8
+    target_items_per_day: [1, 4]
+    attention:
+      minutes_per_day: 40
+    min_score: 0.52
+    categories: [games, games_industry]
+    weights:
+      personal_interest: 0.90
+      intellectual_depth: 0.85
+      novelty: 0.70
+      practical_usefulness: 0.15
+      entertainment: 0.65
+      storytelling: 0.55
+      authorial_voice: 0.45
+      critique: 0.45
+      humor: 0.25
+      delight: 0.45
+      headline_sufficiency: -0.95
+      source_quality: 0.15
+      expected_attention_value: 0.70
+      ragebait: -1.40
+      duplicate_information: -1.10
+    gates:
+      max_ragebait: 0.35
+    diversity:
+      max_per_category_per_day: 8
+
+  # --- Culture --------------------------------------------------------------
+  - id: culture
+    slug: culture
+    title: "Sift · Culture"
+    description: >
+      Internet and platform culture, strange subcultures, creator behavior,
+      societal observation, and exceptional cultural writing.
+    mode: weighted
+    daily_cap: 8
+    target_items_per_day: [1, 5]
+    attention:
+      minutes_per_day: 45
+    min_score: 0.50
+    categories: [culture, internet_culture]
+    weights:
+      personal_interest: 0.80
+      intellectual_depth: 0.75
+      novelty: 0.75
+      practical_usefulness: 0.10
+      entertainment: 0.80
+      storytelling: 0.65
+      authorial_voice: 0.70
+      critique: 0.45
+      humor: 0.45
+      rabbit_hole: 0.55
+      delight: 0.70
+      headline_sufficiency: -0.75
+      source_quality: 0.15
+      expected_attention_value: 0.70
+      ragebait: -1.30
+      duplicate_information: -0.80
+    gates:
+      max_ragebait: 0.40
+    diversity:
+      max_per_category_per_day: 8
+
+  # --- Serendipity ----------------------------------------------------------
+  # quality × novelty × distance_from_known_interests, with a hard quality floor.
+  # Behavioural learning must never compete this feed away.
+  - id: serendipity
+    slug: serendipity
+    title: "Sift · Serendipity"
+    description: >
+      Excellent things from outside the usual orbit. Deliberately not
+      personalised toward what you already read.
+    mode: serendipity
+    daily_cap: 3
+    target_items_per_day: [1, 3]
+    attention:
+      minutes_per_day: 30
+    min_score: 0.34
+    categories: []
+    quality_weights:
+      intellectual_depth: 0.45
+      storytelling: 0.15
+      authorial_voice: 0.10
+      obsessive_expertise: 0.10
+      rabbit_hole: 0.10
+      delight: 0.05
+      expected_attention_value: 0.05
+    gates:
+      min_quality: 0.55
+      max_ragebait: 0.25
+      min_novelty: 0.45
+      # What makes this feed mean "outside my orbit" rather than "scored well".
+      min_distance: 0.52
+      max_personal_interest: 0.55
+    novelty_exponent: 1.0
+    distance_exponent: 0.85
+    # Protected: the final ranker may not spend these slots on anything else.
+    protected_slots_per_day: 1
+    diversity:
+      max_per_category_per_day: 2
+      source_decay: [1.00, 0.40]

@@ -1,0 +1,78 @@
+# Archival discovery is a separate editorial lane. Popularity discovers
+# candidates; only full-text, article-specific evaluation decides what ships.
+version: 1
+enabled: true
+prompt: classics-ranking-v2
+
+feed:
+  id: classics
+  slug: classics
+  title: "Sift Classics"
+  description: >
+    One exceptional older article chosen for the reader: timeless analysis,
+    storytelling, voice, obsessive expertise, and irresistible rabbit holes.
+  mode: weighted
+  daily_cap: 1
+  min_score: 0.84
+  categories: []
+
+discovery:
+  # Recent work belongs in the ordinary Sift funnel. Classics begins at one
+  # year old, and neither discovery nor final scoring rewards recency.
+  min_age_days: 365
+  refresh_interval_days: 7
+  max_candidates: 1500
+  prefetch_limit: 120
+  model_limit: 40
+  historical_hn:
+    enabled: true
+    start_year: 2007
+    min_points: 150
+    min_comments: 20
+    hits_per_year: 100
+  longreads:
+    enabled: true
+    start_year: 2011
+    hits_per_year: 35
+  # Hand-inspected URLs from awards, author recommendations, or targeted search
+  # can be added here without turning the source of discovery into a ranking vote.
+  curated_seeds: []
+
+eligibility:
+  min_body_chars: 2500
+  require_english: true
+  require_readability: true
+  reject_explicitly_paid: true
+
+ranking:
+  # A Classic must be both inviting enough to start and likely to deliver an
+  # exceptional payoff. Keeping these separate prevents worthy-but-unreadable
+  # work and highly clickable disappointments from hiding behind one average.
+  min_score: 0.84
+  min_predicted_read: 0.75
+  min_predicted_payoff: 0.90
+  historical_signal_weight: 0.02
+  weights:
+    analysis: 0.14
+    storytelling: 0.16
+    authorial_voice: 0.12
+    entertainment: 0.10
+    obsessive_expertise: 0.10
+    rabbit_hole: 0.12
+    critique: 0.06
+    humor: 0.05
+    enduring_value: 0.10
+    personal_interest: 0.03
+    historical_quality: 0.02
+  penalties:
+    homework: 0.12
+    datedness: 0.15
+    ragebait: 0.15
+
+publishing:
+  max_per_run: 1
+  max_per_day: 1
+  feed_length: 60
+  diversity_lookback_days: 21
+  max_same_domain_in_lookback: 1
+  max_same_category_in_lookback: 3

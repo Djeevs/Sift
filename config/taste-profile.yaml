@@ -1,0 +1,108 @@
+# Neutral starter profile. `npm run onboard` creates a private profile overlay;
+# this file exists so a clean checkout is valid without inheriting its author's taste.
+version: 2
+
+about_me: >
+  I want a selective reading feed that surfaces articles I will be genuinely glad
+  to have found. Prefer worthwhile discoveries over exhaustive coverage, and do
+  not confuse professional obligation or broad popularity with personal value.
+  Reading time is scarce, so an item should offer a real change in understanding,
+  a compelling experience, useful evidence, or genuine delight. Surface both
+  important current developments and durable work that remains worth reading.
+
+strong_interests:
+  - important developments with meaningful consequences
+  - excellent explanatory writing
+  - surprising ideas outside the usual news cycle
+  - society institutions and everyday change
+  - technology science culture and their consequences
+
+topic_priorities:
+  - id: important_developments
+    priority: 7
+    guidance: Consequential developments explained with enough context to understand why they matter.
+  - id: analysis_and_explanation
+    priority: 7
+    guidance: Strong analysis that reveals mechanisms, evidence, tradeoffs, or second-order effects.
+  - id: serendipitous_discovery
+    priority: 6
+    guidance: Exceptional stories and ideas outside established interests when execution makes them irresistible.
+  - id: society_and_institutions
+    priority: 6
+    guidance: Concrete reporting and analysis about how institutions, communities, incentives, and everyday life change.
+  - id: science_and_technology
+    priority: 6
+    guidance: Accessible advances and products with real novelty, evidence, or consequences rather than incremental promotion.
+  - id: narrative_and_culture
+    priority: 5
+    guidance: Memorable narrative, criticism, history, or cultural observation when the writing has a thesis, voice, and payoff.
+
+positive_content_traits:
+  - non-obvious insight supported by evidence
+  - clear explanation of mechanisms and consequences
+  - strong storytelling or distinctive authorial voice
+  - novelty with a concrete payoff
+  - careful reporting and original evidence
+  - dry humor surprising detail or memorable characters
+  - immediately useful or sendable to another person
+
+negative_content_traits:
+  - thin aggregation or SEO filler
+  - routine announcements with little beyond the headline
+  - generic professional advice
+  - ragebait and engagement-driven outrage
+  - repetitive coverage without a distinct perspective
+  - prestige or length standing in for insight
+  - generic recaps of widely covered events
+
+editorial_notes: >
+  Topic fit and execution quality are separate. Exceptional work outside the
+  listed interests can win; mediocre coverage of a preferred topic should not.
+  Preserve some serendipity and avoid repetitive coverage of the same story.
+  Judge the actual artifact rather than the premise: a promising headline, famous
+  source, popular link, or important subject does not guarantee worthwhile
+  reading. Prefer mechanisms, evidence, narrative progression, judgment, and a
+  concrete payoff. Straight reporting can win when the event itself is genuinely
+  consequential. Short work can win when it is dense with value; long work must
+  earn its length. Keep a varied portfolio rather than filling every slot with
+  similar serious essays. Entertainment, beauty, humor, and surprise can be
+  complete reasons to recommend something. Treat unfamiliarity as neither a
+  virtue nor a defect: a wildcard succeeds only when its execution overcomes the
+  reader's low prior interest.
+
+style_references: []
+positive_examples: []
+negative_examples: []
+
+reader_preferences:
+  version: 1
+  attention_budget: 15_30
+  article_length: long_when_exceptional
+  paywall_policy: free_only
+  subscribed_publications: []
+  languages: [en]
+  non_primary_language_policy: never
+  freshness_balance: balanced
+  max_evergreen_age_days: null
+  serendipity: 5
+  writing_voices: []
+  disliked_styles: []
+  medium_preferences: []
+source_preferences: []
+
+interest_anchors:
+  - id: important_developments
+    category: other
+    text: Consequential developments, discoveries, or changes explained with concrete evidence and implications.
+  - id: excellent_explanation
+    category: other
+    text: Excellent explanatory writing with mechanisms, evidence, surprising insight, and a clear intellectual payoff.
+  - id: wildcard_discovery
+    category: wildcard
+    text: An irresistible narrative, unusual expert, delightful rabbit hole, or surprising idea outside familiar interests.
+
+avoid_anchors:
+  - id: thin_content
+    text: Thin aggregation, routine announcements, SEO filler, generic advice, and articles replaceable by their headline.
+  - id: outrage_bait
+    text: Engagement-driven outrage, tribal point-scoring, manipulation, and conflict without durable insight.

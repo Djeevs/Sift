@@ -1,0 +1,36 @@
+# fly.io deployment. See README "Deployment".
+#
+#   fly launch --no-deploy
+#   fly volumes create sift_data --size 1
+#   fly secrets set OPENAI_API_KEY=sk-... SIFT_ACCESS_TOKEN=$(openssl rand -hex 24)
+#   fly deploy
+
+app = "sift"
+primary_region = "ams"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "8787"
+  SIFT_DB_PATH = "/data/sift.db"
+  SIFT_EMBEDDING_MODEL = "text-embedding-3-small"
+  SIFT_CHEAP_MODEL = "gpt-4o-mini"
+  SIFT_DEEP_MODEL = "gpt-4o"
+  SIFT_LOG_LEVEL = "info"
+
+[[mounts]]
+  source = "sift_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8787
+  force_https = true
+  # One user, one process: never scale to zero mid-pipeline, never scale up.
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

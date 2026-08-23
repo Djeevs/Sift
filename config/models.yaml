@@ -1,0 +1,71 @@
+# ---------------------------------------------------------------------------
+# models.yaml
+#
+# Stage 4 (Luna) and stage 5 (Terra). Model ids never appear in code.
+#
+# reasoning_effort is passed through verbatim and is a free-form string, so a new
+# provider value works by editing this file. When it is set, `temperature` is not
+# sent: reasoning models generally reject it.
+#
+# The system prompt is identical for every item in a stage and sits at the front
+# of each request, so the provider serves it from its prompt cache. That only
+# works above a minimum prompt length -- measured hit rate is ~92%. If
+# `cache_hit` in `npm run stats` falls to 0%, the prompt has dropped below the
+# provider's floor.
+# ---------------------------------------------------------------------------
+
+version: 1
+
+models:
+  # Stage 4 --- "Does this plausibly deserve human attention?"
+  triage:
+    model: gpt-5.6-luna
+    reasoning_effort: none
+    max_output_tokens: 220
+    max_concurrency: 6
+    # developers.openai.com/api/docs/pricing, checked 2026-08-19.
+    cost_per_1m_input: 0.20
+    cost_per_1m_cached_input: 0.02
+    cost_per_1m_output: 1.20
+
+  # Stage 5 --- "Does this genuinely deserve human attention?"
+  deep:
+    model: gpt-5.6-terra
+    reasoning_effort: low
+    max_output_tokens: 700
+    max_concurrency: 4
+    cost_per_1m_input: 2.00
+    cost_per_1m_cached_input: 0.20
+    cost_per_1m_output: 12.00
+    # Batch API where the queue is large enough: cheaper, and latency does not
+    # matter for a reading system.
+    mode: auto
+    batch_min_items: 25
+    batch_poll_interval_seconds: 60
+    batch_max_wait_hours: 24
+
+  # Stage 3 semantic scoring. See `semantic` below for the provider choice.
+  embeddings:
+    model: text-embedding-3-small
+    dimensions: 1536
+    cost_per_1m_input: 0.02
+    batch_size: 96
+
+# --- Semantic scoring provider ----------------------------------------------
+# Stage 3 wants free semantic scoring. The options, and why the default is what
+# it is:
+#
+#   api     Any configured OpenAI-compatible embeddings API, including OpenAI,
+#           Ollama and many hosted providers. The current OpenAI endpoint costs
+#           ~$0.29/month for all 45 sources.
+#   hash    Free, local, no dependencies: deterministic token-hash vectors. Much
+#           weaker semantically, but a real fallback that keeps the pipeline
+#           running with no API key and no model download.
+# `fallback` is used automatically whenever the primary provider is unavailable
+# (no key, network failure, model missing), so a semantic outage degrades stage 3
+# to heuristics rather than stopping the run.
+semantic:
+  provider: api
+  fallback: hash
+  # Cache vectors by content hash: re-running never re-embeds unchanged text.
+  cache: true

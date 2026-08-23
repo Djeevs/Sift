@@ -1,0 +1,22 @@
+node_modules/
+dist/
+data/
+.env
+*.log
+.DS_Store
+coverage/
+public/
+worker/.dev.vars
+worker/worker-configuration.d.ts
+worker/.wrangler/
+.backups/
+profiles/*
+!profiles/example/
+!profiles/example/**
+
+# Live Worker bindings: KV namespace and D1 database ids for the real
+# deployment. wrangler.example.toml is the shareable template.
+worker/wrangler.toml
+
+# Build artifact produced by `npm run share-package`; regenerate, never commit.
+sift-*.tgz

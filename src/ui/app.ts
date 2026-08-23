@@ -1,0 +1,608 @@
+import { randomBytes, randomUUID } from 'node:crypto';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
+import { parseEnv } from 'node:util';
+import { Hono, type Context } from 'hono';
+import { parse as parseYaml } from 'yaml';
+import {
+  PROJECT_ROOT,
+  feedFileSchema,
+  classicsFileSchema,
+  modelsFileSchema,
+  readerPreferencesSchema,
+  type ReaderPreferences,
+} from '../config/index.js';
+import { escapeXml } from '../util/text.js';
+import {
+  createProfile,
+  atomicWrite,
+  parseDossier,
+  profileDirectory,
+  readOnboardingState,
+  renderProfilePreview,
+  validateProfileId,
+  type OnboardingDossier,
+} from '../onboarding/index.js';
+import {
+  defaultReaderPreferences,
+  normalizeLanguages,
+  suggestedReaderPreferences,
+} from '../onboarding/preferences.js';
+import {
+  applyRankedCalibration,
+  rankedCalibrationItems,
+  type RankedCalibrationAnswers,
+  type RankedCalibrationLabel,
+} from '../onboarding/calibration.js';
+import { UiJobRunner, type UiAction } from './jobs.js';
+
+interface Draft {
+  profileId: string;
+  dossier: OnboardingDossier;
+  preferences?: ReaderPreferences;
+  preferenceStatus?: 'completed' | 'defaults';
+}
+
+interface ProfileSummary {
+  id: string;
+  databasePath: string;
+  databaseExists: boolean;
+  items: number;
+  placements: number;
+  publicUrl: string;
+  token: string;
+  calibration: string;
+  review: string;
+  sourceCandidates: number;
+  validatedFeeds: number;
+  provider: string;
+  aiKeyConfigured: boolean;
+  aiReady: boolean;
+  triageModel: string;
+  deepModel: string;
+  embeddingModel: string;
+  baseUrl: string;
+  cloudflareConfigured: boolean;
+}
+
+export interface UiAppOptions {
+  projectRoot?: string;
+  csrfToken?: string;
+  jobRunner?: UiJobRunner;
+}
+
+function readEnv(path: string): Record<string, string> {
+  if (!existsSync(path)) return {};
+  try {
+    return Object.fromEntries(
+      Object.entries(parseEnv(readFileSync(path, 'utf8'))).filter((entry): entry is [string, string] => typeof entry[1] === 'string'),
+    );
+  } catch {
+    return {};
+  }
+}
+
+const PROVIDERS = ['openai', 'ollama', 'openrouter', 'groq', 'gemini', 'anthropic', 'custom'] as const;
+type Provider = typeof PROVIDERS[number];
+
+function providerKeyName(provider: Provider): string | null {
+  return {
+    openai: 'OPENAI_API_KEY',
+    ollama: null,
+    openrouter: 'OPENROUTER_API_KEY',
+    groq: 'GROQ_API_KEY',
+    gemini: 'GEMINI_API_KEY',
+    anthropic: 'ANTHROPIC_API_KEY',
+    custom: 'OPENAI_API_KEY',
+  }[provider];
+}
+
+function configuredSecret(value: string | undefined): boolean {
+  const normalized = value?.trim() ?? '';
+  return Boolean(normalized && !/^(?:sk-\.\.\.|change-me|your[-_ ]|example)/i.test(normalized));
+}
+
+function safeEnvValue(value: string, label: string, max = 1000): string {
+  if (value.length > max || /[\r\n\0]/.test(value)) throw new Error(`${label} contains invalid characters.`);
+  return value.trim();
+}
+
+function safeHttpUrl(value: string | null): string | null {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    return ['http:', 'https:'].includes(url.protocol) ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Preserve unrelated profile settings and comments. Values are always quoted
+ * so API-key punctuation cannot become dotenv syntax. */
+function updateEnv(path: string, updates: Record<string, string>): void {
+  const lines = existsSync(path) ? readFileSync(path, 'utf8').split(/\r?\n/) : [];
+  for (const [key, value] of Object.entries(updates)) {
+    const index = lines.findIndex((line) => new RegExp(`^${key}=`).test(line));
+    const rendered = `${key}=${JSON.stringify(value)}`;
+    if (index >= 0) lines[index] = rendered;
+    else lines.push(rendered);
+  }
+  atomicWrite(path, `${lines.join('\n').replace(/\n+$/, '')}\n`);
+}
+
+function field(body: Record<string, string | File>, name: string): string {
+  const value = body[name];
+  return typeof value === 'string' ? value : '';
+}
+
+function checked(body: Record<string, string | File>, name: string): boolean {
+  return ['1', 'true', 'yes', 'on', 'approve'].includes(field(body, name).toLowerCase());
+}
+
+function splitList(raw: string): string[] {
+  return [...new Set(raw.split(/[,\n]/).map((item) => item.trim()).filter(Boolean))];
+}
+
+function mediumPreferences(raw: string): ReaderPreferences['medium_preferences'] {
+  if (!raw.trim()) return [];
+  return splitList(raw).map((entry) => {
+    const [subject, rawMedium] = entry.split('=').map((part) => part?.trim());
+    const preferred_medium = rawMedium?.toLowerCase();
+    if (!subject || !['text', 'video', 'podcast', 'any'].includes(preferred_medium ?? '')) {
+      throw new Error(`Invalid medium rule “${entry}”. Use subject=video, subject=podcast, subject=text, or subject=any.`);
+    }
+    return { subject, preferred_medium: preferred_medium as 'text' | 'video' | 'podcast' | 'any', strength: 'prefer' as const };
+  });
+}
+
+function preferencesFromForm(body: Record<string, string | File>): ReaderPreferences {
+  const maxAgeRaw = field(body, 'max_evergreen_age_days').trim();
+  return readerPreferencesSchema.parse({
+    version: 1,
+    attention_budget: field(body, 'attention_budget'),
+    article_length: field(body, 'article_length'),
+    paywall_policy: field(body, 'paywall_policy'),
+    subscribed_publications: splitList(field(body, 'subscribed_publications')),
+    languages: normalizeLanguages(splitList(field(body, 'languages'))),
+    non_primary_language_policy: field(body, 'non_primary_language_policy'),
+    freshness_balance: field(body, 'freshness_balance'),
+    max_evergreen_age_days: maxAgeRaw ? Number(maxAgeRaw) : null,
+    serendipity: Number(field(body, 'serendipity')),
+    writing_voices: splitList(field(body, 'writing_voices')),
+    disliked_styles: splitList(field(body, 'disliked_styles')),
+    medium_preferences: mediumPreferences(field(body, 'medium_preferences')),
+  });
+}
+
+function option(value: string, label: string, selected: string): string {
+  return `<option value="${escapeXml(value)}"${value === selected ? ' selected' : ''}>${escapeXml(label)}</option>`;
+}
+
+function hiddenCsrf(csrf: string): string {
+  return `<input type="hidden" name="csrf" value="${escapeXml(csrf)}">`;
+}
+
+function profileIds(projectRoot: string): string[] {
+  const root = resolve(projectRoot, 'profiles');
+  if (!existsSync(root)) return [];
+  return readdirSync(root, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && entry.name !== 'example' && existsSync(resolve(root, entry.name, 'taste-profile.yaml')))
+    .map((entry) => entry.name)
+    .sort();
+}
+
+function jsonCount(path: string, property: string): number {
+  if (!existsSync(path)) return 0;
+  try {
+    const parsed = JSON.parse(readFileSync(path, 'utf8')) as Record<string, unknown>;
+    const value = parsed[property];
+    return Array.isArray(value) ? value.length : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function profileSummary(projectRoot: string, profileId: string): ProfileSummary {
+  const directory = profileDirectory(profileId, projectRoot);
+  const rootEnv = readEnv(resolve(projectRoot, '.env'));
+  const profileEnv = readEnv(resolve(directory, '.env'));
+  const effectiveEnv = { ...rootEnv, ...profileEnv };
+  const isRootProfile = rootEnv.SIFT_PROFILE?.trim().toLowerCase() === profileId;
+  const rawDb = profileEnv.SIFT_DB_PATH || (isRootProfile ? rootEnv.SIFT_DB_PATH : '') || `./data/profiles/${profileId}.db`;
+  const databasePath = rawDb === ':memory:' ? rawDb : resolve(projectRoot, rawDb);
+  let items = 0;
+  let placements = 0;
+  if (databasePath !== ':memory:' && existsSync(databasePath)) {
+    try {
+      const db = new DatabaseSync(databasePath, { readOnly: true });
+      const row = db.prepare(`SELECT (SELECT COUNT(*) FROM feed_items) AS items,
+        (SELECT COUNT(*) FROM published_feed_items) AS placements`).get() as { items: number; placements: number };
+      items = Number(row.items ?? 0);
+      placements = Number(row.placements ?? 0);
+      db.close();
+    } catch {
+      // The dashboard remains usable when a database is mid-migration or locked.
+    }
+  }
+  let calibration = 'not started';
+  let review = 'not started';
+  try {
+    const state = readOnboardingState(directory);
+    calibration = state.calibration;
+    review = state.first_week_review;
+  } catch {
+    // Older owner profiles predate onboarding state.
+  }
+  const publicUrl = (profileEnv.SIFT_PUBLIC_URL || (isRootProfile ? rootEnv.SIFT_PUBLIC_URL : '') || 'http://localhost:8787').replace(/\/+$/, '');
+  const token = profileEnv.SIFT_ACCESS_TOKEN || (isRootProfile ? rootEnv.SIFT_ACCESS_TOKEN : '') || '';
+  const sourceCandidates = jsonCount(resolve(directory, 'source-candidates.json'), 'candidates');
+  let validatedFeeds = 0;
+  const discoveryPath = resolve(directory, 'source-discovery.json');
+  if (existsSync(discoveryPath)) {
+    try {
+      const discovery = JSON.parse(readFileSync(discoveryPath, 'utf8')) as { results?: Array<{ feeds?: unknown[] }> };
+      validatedFeeds = (discovery.results ?? []).reduce((sum, result) => sum + (result.feeds?.length ?? 0), 0);
+    } catch {
+      // Leave the count at zero; the report itself remains available on disk.
+    }
+  }
+  const modelPath = existsSync(resolve(directory, 'models.yaml'))
+    ? resolve(directory, 'models.yaml')
+    : resolve(projectRoot, 'config', 'models.yaml');
+  const models = modelsFileSchema.parse(parseYaml(readFileSync(modelPath, 'utf8')));
+  const provider = (effectiveEnv.SIFT_AI_PROVIDER || 'openai').toLowerCase();
+  const knownProvider = PROVIDERS.includes(provider as Provider) ? provider as Provider : 'custom';
+  const keyName = providerKeyName(knownProvider);
+  const sharedKeyConfigured = keyName ? configuredSecret(effectiveEnv[keyName]) : true;
+  const roleKeysConfigured = configuredSecret(effectiveEnv.SIFT_TRIAGE_API_KEY) && configuredSecret(effectiveEnv.SIFT_DEEP_API_KEY);
+  const aiKeyConfigured = sharedKeyConfigured || roleKeysConfigured;
+  return {
+    id: profileId,
+    databasePath,
+    databaseExists: databasePath === ':memory:' || existsSync(databasePath),
+    items,
+    placements,
+    publicUrl,
+    token,
+    calibration,
+    review,
+    sourceCandidates,
+    validatedFeeds,
+    provider,
+    aiKeyConfigured,
+    aiReady: provider === 'ollama' || aiKeyConfigured,
+    triageModel: profileEnv.SIFT_TRIAGE_MODEL || effectiveEnv.SIFT_TRIAGE_MODEL || models.models.triage.model,
+    deepModel: profileEnv.SIFT_DEEP_MODEL || effectiveEnv.SIFT_DEEP_MODEL || models.models.deep.model,
+    embeddingModel: profileEnv.SIFT_EMBEDDING_MODEL || effectiveEnv.SIFT_EMBEDDING_MODEL || models.models.embeddings.model,
+    baseUrl: profileEnv.OPENAI_BASE_URL || effectiveEnv.OPENAI_BASE_URL || '',
+    cloudflareConfigured: Boolean(
+      effectiveEnv.SIFT_KV_NAMESPACE_ID?.trim() &&
+      publicUrl &&
+      !/^https?:\/\/(?:localhost|127\.0\.0\.1)(?::|\/|$)/i.test(publicUrl)
+    ),
+  };
+}
+
+function feedSlugs(projectRoot: string, profileId: string): Array<{ title: string; slug: string }> {
+  const directory = profileDirectory(profileId, projectRoot);
+  const configPath = (name: string) => existsSync(resolve(directory, name))
+    ? resolve(directory, name)
+    : resolve(projectRoot, 'config', name);
+  const feeds = feedFileSchema.parse(parseYaml(readFileSync(configPath('feed-config.yaml'), 'utf8'))).feeds;
+  const classics = classicsFileSchema.parse(parseYaml(readFileSync(configPath('classics.yaml'), 'utf8'))).feed;
+  return [...feeds, classics].map((feed) => ({ title: feed.title, slug: feed.slug }));
+}
+
+function page(title: string, body: string, options: { refresh?: number } = {}): string {
+  return `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+${options.refresh ? `<meta http-equiv="refresh" content="${options.refresh}">` : ''}
+<title>${escapeXml(title)} · Sift</title>
+<style>
+:root { color-scheme: light dark; --bg:#f4f2ed; --card:#fffdf8; --ink:#24231f; --muted:#726f66; --line:#ddd8ce; --accent:#315f4f; --accent2:#dce9e3; --warn:#9b4b31; }
+@media (prefers-color-scheme:dark){:root{--bg:#171816;--card:#20221f;--ink:#f1eee6;--muted:#aaa69d;--line:#373a35;--accent:#8bc5af;--accent2:#293c35;--warn:#ed9b7d}}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",sans-serif}
+main{max-width:980px;margin:0 auto;padding:32px 20px 72px} nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:32px}.brand{font:700 22px/1 Georgia,serif;letter-spacing:.02em}.navlinks{display:flex;gap:16px}
+h1{font:700 clamp(30px,5vw,50px)/1.05 Georgia,serif;margin:0 0 12px;max-width:760px}h2{font:700 22px/1.2 Georgia,serif;margin:0 0 14px}h3{margin:0 0 8px}.lede{font-size:18px;color:var(--muted);max-width:720px;margin:0 0 28px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:0 1px 2px #0000000a}.hero{padding:28px;margin-bottom:20px}.stack>*+*{margin-top:16px}.muted{color:var(--muted)}.eyebrow{text-transform:uppercase;letter-spacing:.12em;font-size:11px;font-weight:700;color:var(--muted)}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}.button,button{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:0;border-radius:10px;padding:10px 14px;background:var(--accent);color:var(--card);font:600 14px/1.2 inherit;cursor:pointer;text-decoration:none}.button.secondary,button.secondary{background:var(--accent2);color:var(--ink)}.button.danger,button.danger{background:var(--warn);color:white}.actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+label{display:block;font-weight:650;margin-bottom:5px}.hint{font-size:13px;color:var(--muted);margin-top:4px}input[type=text],input[type=password],input[type=url],input[type=number],textarea,select{width:100%;border:1px solid var(--line);border-radius:9px;background:var(--card);color:var(--ink);padding:10px 11px;font:inherit}textarea{min-height:130px;resize:vertical}.json{min-height:320px;font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace}.prompt{min-height:260px}.field{margin-bottom:17px}.check{display:flex;gap:9px;align-items:flex-start}.check input{margin-top:5px}.check label{font-weight:500}
+.metric{font:700 25px/1.1 Georgia,serif}.metric-label{color:var(--muted);font-size:12px;margin-top:4px}.pill{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:3px 8px;font-size:12px;color:var(--muted)}.good{color:var(--accent)}.warning{color:var(--warn)}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#161815;color:#e9efe9;border-radius:12px;padding:16px;max-height:460px;overflow:auto;font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace}.feed{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid var(--line)}.feed:first-child{border-top:0}.feed code{font-size:12px;overflow-wrap:anywhere}.section{margin-top:28px}.error{border-color:var(--warn);color:var(--warn)}
+.step{display:grid;grid-template-columns:34px 1fr;gap:12px}.step-number{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--accent2);font-weight:700}.step h2{margin-top:2px}.article-card h3{font:700 18px/1.3 Georgia,serif}.article-meta{font-size:12px;color:var(--muted);margin-bottom:8px}.rating{display:flex;gap:14px;flex-wrap:wrap;margin-top:16px}.rating label{font-weight:550}.rating input{margin-right:5px}details{border-top:1px solid var(--line);padding:14px 0}details:first-of-type{border-top:0}summary{cursor:pointer;font-weight:700}button:disabled,.button.disabled{opacity:.45;cursor:not-allowed;pointer-events:none}
+</style></head><body><main><nav><a class="brand" href="/">Sift</a><div class="navlinks"><a href="/">Profiles</a><a href="/onboarding">Add a reader</a></div></nav>${body}</main>
+<script>document.querySelectorAll('[data-copy]').forEach(b=>b.addEventListener('click',async()=>{await navigator.clipboard.writeText(document.querySelector(b.dataset.copy).value||document.querySelector(b.dataset.copy).textContent);const old=b.textContent;b.textContent='Copied';setTimeout(()=>b.textContent=old,1200)}));document.querySelectorAll('[data-confirm]').forEach(f=>f.addEventListener('submit',e=>{if(!confirm(f.dataset.confirm))e.preventDefault()}));</script>
+</body></html>`;
+}
+
+function errorPage(error: unknown): string {
+  return page('Something needs attention', `<div class="card error"><p class="eyebrow">Could not continue</p><h2>${escapeXml(error instanceof Error ? error.message : String(error))}</h2><p><a href="javascript:history.back()">Go back and review the form</a></p></div>`);
+}
+
+export function createUiApp(options: UiAppOptions = {}): Hono {
+  const projectRoot = options.projectRoot ?? PROJECT_ROOT;
+  const csrf = options.csrfToken ?? randomBytes(24).toString('base64url');
+  const runner = options.jobRunner ?? new UiJobRunner(projectRoot);
+  const drafts = new Map<string, Draft>();
+  const app = new Hono();
+
+  app.use('*', async (c, next) => {
+    c.header('cache-control', 'no-store');
+    c.header('x-frame-options', 'DENY');
+    c.header('referrer-policy', 'no-referrer');
+    c.header('content-security-policy', "default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'");
+    await next();
+  });
+
+  const parseForm = async (c: Context) => {
+    const body = await c.req.parseBody() as Record<string, string | File>;
+    if (field(body, 'csrf') !== csrf) throw new Error('This form expired. Reload the page and try again.');
+    return body;
+  };
+
+  app.get('/', (c) => {
+    const profiles = profileIds(projectRoot).map((id) => profileSummary(projectRoot, id));
+    const cards = profiles.length > 0
+      ? profiles.map((profile) => `<article class="card stack"><div><span class="pill">${profile.databaseExists ? 'ready' : 'setup needed'}</span><h2 style="margin-top:10px">${escapeXml(profile.id)}</h2><p class="muted">${profile.items.toLocaleString()} items · ${profile.placements.toLocaleString()} feed placements</p></div><a class="button secondary" href="/profile/${encodeURIComponent(profile.id)}">Open dashboard</a></article>`).join('')
+      : '<div class="card"><h2>No reader profiles yet</h2><p class="muted">Start by transferring context from a personal assistant.</p></div>';
+    return c.html(page('Sift Home', `<section class="card hero"><p class="eyebrow">Private discovery on your Mac</p><h1>Good things from the internet, without the feed treadmill.</h1><p class="lede">Set up a reader, update recommendations, and copy subscription links from one quiet local place.</p><div class="actions"><a class="button" href="/onboarding">Add a reader</a></div></section><section class="section"><h2>Readers</h2><div class="grid">${cards}</div></section>`));
+  });
+
+  app.get('/onboarding', (c) => {
+    const prompt = readFileSync(resolve(projectRoot, 'onboarding', 'chatgpt-profile-prompt.md'), 'utf8');
+    return c.html(page('Add a reader', `<p class="eyebrow">Step 1 of 3</p><h1>Bring over what your assistant already knows.</h1><p class="lede">Copy the prompt into personal ChatGPT. Paste its final JSON here—your chat history never enters Sift.</p><div class="card stack"><div class="actions"><button type="button" class="secondary" data-copy="#assistant-prompt">Copy ChatGPT prompt</button></div><textarea id="assistant-prompt" class="prompt" readonly>${escapeXml(prompt)}</textarea></div><form class="card section" method="post" action="/onboarding/dossier">${hiddenCsrf(csrf)}<div class="field"><label for="profile_id">Reader name</label><input id="profile_id" name="profile_id" type="text" pattern="[a-z0-9][a-z0-9_-]{0,63}" placeholder="alice" required><p class="hint">Lowercase letters, numbers, hyphens, and underscores.</p></div><div class="field"><label for="dossier">ChatGPT JSON dossier</label><textarea id="dossier" name="dossier" class="json" placeholder="{ &quot;version&quot;: 3, … }" required></textarea></div><button type="submit">Review Sift preferences →</button></form>`));
+  });
+
+  app.post('/onboarding/dossier', async (c) => {
+    try {
+      const body = await parseForm(c);
+      const profileId = validateProfileId(field(body, 'profile_id'));
+      if (existsSync(resolve(profileDirectory(profileId, projectRoot), 'taste-profile.yaml'))) throw new Error(`Profile “${profileId}” already exists.`);
+      const dossier = parseDossier(field(body, 'dossier'));
+      const proposed = suggestedReaderPreferences(dossier.assistant_preference_hints);
+      const id = randomUUID();
+      drafts.set(id, { profileId, dossier });
+      const medium = proposed.medium_preferences.map((item) => `${item.subject}=${item.preferred_medium}`).join(', ');
+      return c.html(page('Reading preferences', `<p class="eyebrow">Step 2 of 3</p><h1>Set the practical reading rules.</h1><p class="lede">ChatGPT suggestions are prefilled when confidence is adequate. These choices belong to Sift and remain editable.</p><form class="card" method="post" action="/onboarding/preview">${hiddenCsrf(csrf)}<input type="hidden" name="draft_id" value="${id}">
+      <div class="check field"><input id="skip_preferences" name="skip_preferences" type="checkbox"><label for="skip_preferences">Skip this page and use conservative Sift defaults</label></div>
+      <div class="grid"><div class="field"><label>Reading capacity</label><select name="attention_budget">${option('under_15','Under 15 minutes/day',proposed.attention_budget)}${option('15_30','15–30 minutes/day',proposed.attention_budget)}${option('30_60','30–60 minutes/day',proposed.attention_budget)}${option('60_plus','60+ minutes/day',proposed.attention_budget)}${option('variable','Highly variable',proposed.attention_budget)}</select></div>
+      <div class="field"><label>Article length</label><select name="article_length">${option('mostly_short','Mostly short',proposed.article_length)}${option('medium','Mostly medium',proposed.article_length)}${option('long_when_exceptional','Long when exceptional',proposed.article_length)}${option('any','Any length',proposed.article_length)}</select></div>
+      <div class="field"><label>Paywalls</label><select name="paywall_policy">${option('free_only','Free only',proposed.paywall_policy)}${option('subscribed_publications','My subscriptions when readable',proposed.paywall_policy)}${option('readable_only','Anything normally readable',proposed.paywall_policy)}${option('quality_first','Quality first, still readable',proposed.paywall_policy)}</select></div>
+      <div class="field"><label>Freshness</label><select name="freshness_balance">${option('timely','Mostly this week',proposed.freshness_balance)}${option('balanced','Timely + evergreen',proposed.freshness_balance)}${option('evergreen','Best regardless of age',proposed.freshness_balance)}</select></div>
+      <div class="field"><label>Languages</label><input name="languages" type="text" value="${escapeXml(proposed.languages.join(', '))}"><p class="hint">Names or codes, comma-separated.</p></div>
+      <div class="field"><label>Other languages</label><select name="non_primary_language_policy">${option('never','Never',proposed.non_primary_language_policy)}${option('exceptional_only','Only when exceptional',proposed.non_primary_language_policy)}${option('equal','Treat equally',proposed.non_primary_language_policy)}</select></div>
+      <div class="field"><label>Serendipity: <output id="serendipity-value">${proposed.serendipity}</output>/10</label><input name="serendipity" type="range" min="0" max="10" step="1" value="${proposed.serendipity}" oninput="document.querySelector('#serendipity-value').value=this.value"></div>
+      <div class="field"><label>Maximum evergreen age</label><input name="max_evergreen_age_days" type="number" min="1" value="${proposed.max_evergreen_age_days ?? ''}" placeholder="No limit"></div></div>
+      <div class="field"><label>Subscribed publications</label><input name="subscribed_publications" type="text" value="${escapeXml(proposed.subscribed_publications.join(', '))}" placeholder="Publication A, Publication B"></div>
+      <div class="field"><label>Preferred writing voices</label><input name="writing_voices" type="text" value="${escapeXml(proposed.writing_voices.join(', '))}" placeholder="concise, investigative, dryly funny"></div>
+      <div class="field"><label>Styles to avoid</label><input name="disliked_styles" type="text" value="${escapeXml(proposed.disliked_styles.join(', '))}" placeholder="breathless hype, generic advice"></div>
+      <div class="field"><label>Subjects better in another medium</label><input name="medium_preferences" type="text" value="${escapeXml(medium)}" placeholder="game criticism=video, interviews=podcast"><p class="hint">Use subject=video, podcast, text, or any.</p></div>
+      <button type="submit">Build profile preview →</button></form>`));
+    } catch (error) {
+      return c.html(errorPage(error), 400);
+    }
+  });
+
+  app.post('/onboarding/preview', async (c) => {
+    try {
+      const body = await parseForm(c);
+      const draft = drafts.get(field(body, 'draft_id'));
+      if (!draft) throw new Error('This onboarding draft expired. Start again.');
+      const skipped = checked(body, 'skip_preferences');
+      draft.preferences = skipped ? defaultReaderPreferences() : preferencesFromForm(body);
+      draft.preferenceStatus = skipped ? 'defaults' : 'completed';
+      const preview = renderProfilePreview(draft.dossier, draft.preferences, draft.preferenceStatus);
+      return c.html(page('Approve profile', `<p class="eyebrow">Step 3 of 3</p><h1>Review before Sift creates anything.</h1><p class="lede">This is the compiled profile—not the raw chat history. Source suggestions remain inactive until feed validation. Optional calibration comes later, using real ranked articles.</p><pre>${escapeXml(preview)}</pre><form class="card section" method="post" action="/onboarding/create">${hiddenCsrf(csrf)}<input type="hidden" name="draft_id" value="${escapeXml(field(body, 'draft_id'))}"><div class="check field"><input id="approval" name="approval" value="approve" type="checkbox" required><label for="approval">I reviewed this profile and approve creating its private files and feed token.</label></div><button type="submit">Create ${escapeXml(draft.profileId)} →</button></form>`));
+    } catch (error) {
+      return c.html(errorPage(error), 400);
+    }
+  });
+
+  app.post('/onboarding/create', async (c) => {
+    try {
+      const body = await parseForm(c);
+      if (field(body, 'approval') !== 'approve') throw new Error('Approval is required before profile creation.');
+      const draftId = field(body, 'draft_id');
+      const draft = drafts.get(draftId);
+      if (!draft?.preferences || !draft.preferenceStatus) throw new Error('This onboarding draft expired. Start again.');
+      createProfile({
+        projectRoot,
+        profileId: draft.profileId,
+        dossier: draft.dossier,
+        preferences: draft.preferences,
+        preferencesStatus: draft.preferenceStatus,
+        approved: true,
+        skipCalibration: false,
+      });
+      drafts.delete(draftId);
+      return c.redirect(`/profile/${encodeURIComponent(draft.profileId)}`, 303);
+    } catch (error) {
+      return c.html(errorPage(error), 400);
+    }
+  });
+
+  app.get('/profile/:id', (c) => {
+    try {
+      const id = validateProfileId(c.req.param('id'));
+      const profile = profileSummary(projectRoot, id);
+      const feeds = feedSlugs(projectRoot, id);
+      const token = profile.token && profile.token !== 'change-me-please' ? `?t=${encodeURIComponent(profile.token)}` : '';
+      const latest = runner.latest(id);
+      const feedRows = feeds.map((feed, index) => {
+        const url = `${profile.publicUrl}/feed/${feed.slug}.xml${token}`;
+        return `<div class="feed"><div><strong>${escapeXml(feed.title)}</strong><br><code id="feed-${index}">${escapeXml(url)}</code></div><button type="button" class="secondary" data-copy="#feed-${index}">Copy</button></div>`;
+      }).join('');
+      const statusText = profile.databaseExists ? 'Ready' : 'Needs database setup';
+      const calibrationText = profile.calibration === 'completed'
+        ? 'Complete'
+        : profile.placements > 0
+          ? 'Optional calibration is ready'
+          : 'Available after the first ranked recommendations';
+      const saved = c.req.query('saved') === 'ai'
+        ? '<div class="card good"><strong>AI settings saved.</strong> The API key was not returned to this page.</div>'
+        : c.req.query('saved') === 'calibration'
+          ? '<div class="card good"><strong>Article feedback saved.</strong> Sift will use the positive and negative examples on future runs.</div>'
+          : '';
+      const localPublishing = /^https?:\/\/(?:localhost|127\.0\.0\.1)(?::|\/|$)/i.test(profile.publicUrl);
+      const providerOptions = [
+        option('openai', 'OpenAI', profile.provider),
+        option('ollama', 'Ollama on this Mac — no key', profile.provider),
+        option('openrouter', 'OpenRouter', profile.provider),
+        option('groq', 'Groq', profile.provider),
+        option('gemini', 'Google Gemini', profile.provider),
+        option('anthropic', 'Anthropic-compatible endpoint', profile.provider),
+        option('custom', 'Custom OpenAI-compatible endpoint', profile.provider),
+      ].join('');
+      const serveCommand = `npm run serve -- --profile ${id}`;
+      const exportCommand = `npm run export -- --profile ${id}`;
+      return c.html(page(`${id} dashboard`, `<p class="eyebrow">Reader dashboard</p><h1>${escapeXml(id)}</h1><p class="lede">${statusText}. ${escapeXml(calibrationText)} · First-week review: ${escapeXml(profile.review)}.</p>${saved}
+      <div class="grid"><div class="card"><div class="metric">${profile.items.toLocaleString()}</div><div class="metric-label">items collected</div></div><div class="card"><div class="metric">${profile.placements.toLocaleString()}</div><div class="metric-label">feed placements</div></div><div class="card"><div class="metric">${profile.sourceCandidates}</div><div class="metric-label">source candidates · ${profile.validatedFeeds} feeds validated</div></div></div>
+
+      <section class="section card step"><div class="step-number">1</div><div><h2>Choose the AI</h2><p class="muted">Current provider: <strong>${escapeXml(profile.provider)}</strong> · ${profile.aiReady ? '<span class="good">ready</span>' : '<span class="warning">API key needed</span>'}. The key is written only to this profile’s private <code>.env</code>; Sift never renders it back into HTML or job logs.</p>
+      <form method="post" action="/profile/${id}/ai">${hiddenCsrf(csrf)}
+      <div class="grid"><div class="field"><label for="provider">Provider</label><select id="provider" name="provider">${providerOptions}</select><p class="hint">For Ollama, custom endpoints, or providers with different naming, expand Model names and enter compatible model IDs.</p></div><div class="field"><label for="api_key">API key</label><input id="api_key" name="api_key" type="password" autocomplete="new-password" spellcheck="false" placeholder="${profile.aiKeyConfigured ? 'Configured — leave blank to keep it' : 'Paste only if this provider requires one'}"><p class="hint">${profile.aiKeyConfigured ? 'A key is configured. Its value is deliberately never shown.' : 'Ollama needs no key. Other hosted providers normally do.'}</p></div></div>
+      <div class="check field"><input id="clear_api_key" name="clear_api_key" type="checkbox"><label for="clear_api_key">Remove the saved key for the selected provider</label></div>
+      <details><summary>Model names and custom endpoint</summary><div class="grid section"><div class="field"><label>Triage model</label><input name="triage_model" type="text" value="${escapeXml(profile.triageModel)}"></div><div class="field"><label>Deep-ranking model</label><input name="deep_model" type="text" value="${escapeXml(profile.deepModel)}"></div><div class="field"><label>Embedding model</label><input name="embedding_model" type="text" value="${escapeXml(profile.embeddingModel)}"></div><div class="field"><label>Custom base URL</label><input name="base_url" type="url" value="${escapeXml(profile.baseUrl)}" placeholder="https://provider.example/v1"><p class="hint">Used only with Custom. Ollama uses its local default.</p></div></div></details>
+      <button type="submit">Save AI settings</button></form></div></section>
+
+      <section class="section card step"><div class="step-number">2</div><div><h2>Discover and rank</h2><p class="muted">Start with the free dry test. Then run a real update to create recommendations you can actually read and judge.</p><div class="actions">
+      ${!profile.databaseExists ? `<form method="post" action="/profile/${id}/action">${hiddenCsrf(csrf)}<input type="hidden" name="action" value="db_setup"><button type="submit">Initialize database</button></form>` : ''}
+      <form method="post" action="/profile/${id}/action">${hiddenCsrf(csrf)}<input type="hidden" name="action" value="pipeline_dry"><button class="secondary" type="submit">Run free dry test</button></form>
+      <form method="post" action="/profile/${id}/action" data-confirm="Run the real recommendation update now? This can use configured AI providers and budget.">${hiddenCsrf(csrf)}<input type="hidden" name="action" value="pipeline"><button type="submit"${profile.aiReady ? '' : ' disabled title="Configure an AI provider first"'}>Update recommendations</button></form>
+      ${profile.sourceCandidates > 0 ? `<form method="post" action="/profile/${id}/action">${hiddenCsrf(csrf)}<input type="hidden" name="action" value="source_discover"><button class="secondary" type="submit">Discover suggested feeds</button></form>` : ''}
+      </div>${latest ? `<p class="hint">Latest: <a href="/job/${latest.id}">${escapeXml(latest.label)} — ${latest.status}</a></p>` : ''}</div></section>
+
+      <section class="section card step"><div class="step-number">3</div><div><h2>Calibrate with real recommendations <span class="pill">optional</span></h2>${profile.placements > 0
+        ? `<p class="muted">Open and read some of Sift’s ranked articles, then label the actual results. This produces much stronger feedback than judging abstract premises.</p><a class="button secondary" href="/profile/${id}/calibration">${profile.calibration === 'completed' ? 'Review calibration again' : 'Calibrate real articles'}</a>`
+        : '<p class="muted">This unlocks after the first real update produces feed placements. There is nothing useful to calibrate before then.</p><span class="button secondary disabled">Waiting for ranked content</span>'}</div></section>
+
+      <section class="section card step"><div class="step-number">4</div><div><h2>Publish and subscribe</h2><p class="muted">${profile.cloudflareConfigured ? '<span class="good">Cloudflare publishing is configured.</span>' : localPublishing ? 'These feed links currently point to this Mac. Choose a publishing path before subscribing on another device.' : 'A remote public URL is configured; verify it is running before subscribing.'}</p>
+      <details open><summary>Recommended: Cloudflare edge</summary><p>Cloudflare keeps the RSS URLs reachable when your Mac sleeps; the Mac still does discovery and ranking when you run or schedule Sift.</p><ol><li>From <code>worker/</code>, run <code>npx wrangler login</code>, create the SIFT_FEEDS KV namespace and <code>sift-events</code> D1 database, then deploy the Worker.</li><li>Put the returned namespace id and Worker URL in this profile’s private <code>.env</code>. Use <code>wrangler secret put</code> for the feed token—never place it in a shell command, chat, or committed file.</li><li>Preview with <code>npm run push -- --profile ${escapeXml(id)} --dry</code>, then upload with <code>npm run push -- --profile ${escapeXml(id)}</code>.</li></ol><p class="hint">Full commands and the worker configuration are in README → Deployment.</p></details>
+      <details><summary>Local Mac — easiest for testing</summary><p>Keep the feed server running. Other devices can subscribe only if they can reach this Mac.</p><div class="actions"><code id="serve-command">${escapeXml(serveCommand)}</code><button type="button" class="secondary" data-copy="#serve-command">Copy command</button></div></details>
+      <details><summary>Static hosting</summary><p>Export feed files, then upload the generated directory to GitHub Pages, Cloudflare Pages, a NAS, or another static host.</p><div class="actions"><code id="export-command">${escapeXml(exportCommand)}</code><button type="button" class="secondary" data-copy="#export-command">Copy command</button></div></details>
+      </div></section>
+
+      <section class="section card"><h2>${localPublishing ? 'Feed URLs on this Mac' : 'RSS subscriptions'}</h2>${feedRows}</section>
+      <section class="section card"><h2>Advanced</h2><p class="muted">Database: ${escapeXml(profile.databasePath)}</p><div class="actions"><a class="button secondary" href="${escapeXml(`${profile.publicUrl}/admin${token}`)}">Open diagnostics</a></div></section>`));
+    } catch (error) {
+      return c.html(errorPage(error), 404);
+    }
+  });
+
+  app.post('/profile/:id/ai', async (c) => {
+    try {
+      const id = validateProfileId(c.req.param('id'));
+      const body = await parseForm(c);
+      const provider = field(body, 'provider').trim().toLowerCase();
+      if (!PROVIDERS.includes(provider as Provider)) throw new Error('Choose a supported AI provider.');
+      const selected = provider as Provider;
+      const apiKey = safeEnvValue(field(body, 'api_key'), 'API key');
+      const baseUrl = safeEnvValue(field(body, 'base_url'), 'Base URL');
+      if (selected === 'custom' && !baseUrl) throw new Error('Custom provider requires a base URL.');
+      if (selected === 'custom') {
+        const parsed = new URL(baseUrl);
+        if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('Custom base URL must use HTTP or HTTPS.');
+      }
+      const updates: Record<string, string> = {
+        SIFT_AI_PROVIDER: selected,
+        SIFT_TRIAGE_MODEL: safeEnvValue(field(body, 'triage_model'), 'Triage model', 200),
+        SIFT_DEEP_MODEL: safeEnvValue(field(body, 'deep_model'), 'Deep model', 200),
+        SIFT_EMBEDDING_MODEL: safeEnvValue(field(body, 'embedding_model'), 'Embedding model', 200),
+        OPENAI_BASE_URL: selected === 'custom' ? baseUrl : '',
+      };
+      const keyName = providerKeyName(selected);
+      if (keyName && (apiKey || checked(body, 'clear_api_key'))) updates[keyName] = checked(body, 'clear_api_key') ? '' : apiKey;
+      updateEnv(resolve(profileDirectory(id, projectRoot), '.env'), updates);
+      return c.redirect(`/profile/${encodeURIComponent(id)}?saved=ai`, 303);
+    } catch (error) {
+      return c.html(errorPage(error), 400);
+    }
+  });
+
+  app.post('/profile/:id/action', async (c) => {
+    try {
+      const id = validateProfileId(c.req.param('id'));
+      const body = await parseForm(c);
+      const action = field(body, 'action') as UiAction;
+      if (!['db_setup', 'pipeline_dry', 'pipeline', 'source_discover'].includes(action)) throw new Error('Unsupported action.');
+      if (action === 'pipeline' && !profileSummary(projectRoot, id).aiReady) {
+        throw new Error('Configure an AI provider and API key before running a real recommendation update.');
+      }
+      const job = runner.start(id, action);
+      return c.redirect(`/job/${job.id}`, 303);
+    } catch (error) {
+      return c.html(errorPage(error), 400);
+    }
+  });
+
+  app.get('/job/:id', (c) => {
+    const job = runner.get(c.req.param('id'));
+    if (!job) return c.html(errorPage('Job not found.'), 404);
+    return c.html(page(job.label, `<p class="eyebrow">${job.status}</p><h1>${escapeXml(job.label)}</h1><p class="lede">Reader ${escapeXml(job.profileId)} · started ${escapeXml(job.startedAt.replace('T', ' ').slice(0, 19))}</p><pre>${escapeXml(job.output || 'Starting…')}</pre><div class="actions"><a class="button secondary" href="/profile/${encodeURIComponent(job.profileId)}">Back to dashboard</a></div>`, { refresh: job.status === 'running' ? 2 : undefined }));
+  });
+
+  app.get('/profile/:id/calibration', (c) => {
+    try {
+      const id = validateProfileId(c.req.param('id'));
+      const directory = profileDirectory(id, projectRoot);
+      if (!existsSync(resolve(directory, 'taste-profile.yaml'))) throw new Error('Profile not found.');
+      const profile = profileSummary(projectRoot, id);
+      if (!profile.databaseExists) throw new Error('Run the first recommendation update before calibrating.');
+      const db = new DatabaseSync(profile.databasePath, { readOnly: true });
+      const items = rankedCalibrationItems(db);
+      db.close();
+      if (items.length === 0) throw new Error('No ranked recommendations yet. Run Update recommendations first, then read a few results.');
+      const previous = new Map<string, RankedCalibrationLabel>();
+      const calibrationPath = resolve(directory, 'calibration.json');
+      if (existsSync(calibrationPath)) {
+        try {
+          const saved = JSON.parse(readFileSync(calibrationPath, 'utf8')) as RankedCalibrationAnswers;
+          for (const answer of saved.answers ?? []) previous.set(answer.item_id, answer.label);
+        } catch {
+          // A malformed old calibration file should not block a fresh review.
+        }
+      }
+      const cards = items.map((item, index) => {
+        const url = safeHttpUrl(item.url);
+        const selected = previous.get(item.item_id) ?? 'not_read';
+        const radio = (value: RankedCalibrationLabel, label: string) => `<label><input type="radio" name="rating_${index}" value="${value}"${selected === value ? ' checked' : ''}> ${label}</label>`;
+        return `<article class="card article-card"><input type="hidden" name="item_${index}" value="${escapeXml(item.item_id)}"><p class="article-meta">${index + 1} of ${items.length} · ${escapeXml(item.source)} · ranked ${Math.round(item.score * 100)}%</p><h3>${url ? `<a href="${escapeXml(url)}" target="_blank" rel="noopener noreferrer">${escapeXml(item.title)} ↗</a>` : escapeXml(item.title)}</h3>${item.why_it_surfaced ? `<p class="muted">Why Sift chose it: ${escapeXml(item.why_it_surfaced)}</p>` : ''}<div class="rating">${radio('glad', 'Glad I read it')}${radio('fine', 'Fine')}${radio('not_for_me', 'Not for me')}${radio('not_read', 'Not read yet')}</div></article>`;
+      }).join('');
+      return c.html(page('Calibration', `<p class="eyebrow">Optional · after ranking</p><h1>Judge the real recommendations.</h1><p class="lede">Open anything you have not read, then rate the actual article—not its premise. Unread items do not affect Sift. You can return after reading more.</p><form class="stack" method="post" action="/profile/${id}/calibration">${hiddenCsrf(csrf)}<input type="hidden" name="item_count" value="${items.length}">${cards}<div class="actions"><button type="submit">Save article feedback</button><a class="button secondary" href="/profile/${id}">Back without saving</a></div></form>`));
+    } catch (error) {
+      return c.html(errorPage(error), 404);
+    }
+  });
+
+  app.post('/profile/:id/calibration', async (c) => {
+    try {
+      const id = validateProfileId(c.req.param('id'));
+      const body = await parseForm(c);
+      const count = Number(field(body, 'item_count'));
+      if (!Number.isInteger(count) || count < 1 || count > 50) throw new Error('Calibration form is invalid or expired.');
+      const answers: RankedCalibrationAnswers = {
+        version: 2,
+        answers: Array.from({ length: count }, (_, index) => {
+          const item_id = field(body, `item_${index}`);
+          const label = field(body, `rating_${index}`);
+          if (!item_id || !['glad', 'fine', 'not_for_me', 'not_read'].includes(label)) throw new Error('Please label every displayed article.');
+          return { item_id, label: label as RankedCalibrationLabel };
+        }),
+      };
+      const profile = profileSummary(projectRoot, id);
+      if (!profile.databaseExists) throw new Error('Profile database not found.');
+      const db = new DatabaseSync(profile.databasePath);
+      try {
+        applyRankedCalibration(profileDirectory(id, projectRoot), db, answers);
+      } finally {
+        db.close();
+      }
+      return c.redirect(`/profile/${encodeURIComponent(id)}?saved=calibration`, 303);
+    } catch (error) {
+      return c.html(errorPage(error), 400);
+    }
+  });
+
+  return app;
+}

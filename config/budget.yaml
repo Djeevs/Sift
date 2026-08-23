@@ -1,0 +1,113 @@
+# =============================================================================
+# Spend, and what to give up as it runs out.
+# =============================================================================
+#
+# Terra is ~98% of this system's cost, so every number here is really about how
+# many deep evaluations get bought and which ones. The pipeline reads this
+# actively -- it is not a reporting-only budget. Prices themselves live in
+# models.yaml alongside the model definitions and are never duplicated here.
+
+# Which operating mode is live. `calibration` deliberately overspends for a
+# short period to gather false-negative evidence; `steady_state` is the normal
+# setting. Switch with `mode:` or the SIFT_MODE environment variable.
+mode: calibration
+
+modes:
+  # Temporary. Buys audit coverage at the cost of a higher bill, so the funnel
+  # can actually be measured. Expect to run this for one to two weeks.
+  calibration:
+    monthly_target_usd: 15
+    monthly_hard_limit_usd: 20
+    free_reject_audit_rate: 0.20
+    luna_reject_audit_rate: 0.15
+    audit_max_per_run:
+      free_to_luna: 30
+      luna_to_terra: 20
+    extra_diagnostics: true
+
+  # The intended resting state.
+  steady_state:
+    monthly_target_usd: 10
+    monthly_hard_limit_usd: 20
+    free_reject_audit_rate: 0.05
+    luna_reject_audit_rate: 0.05
+    audit_max_per_run:
+      free_to_luna: 8
+      luna_to_terra: 5
+    extra_diagnostics: false
+
+budget:
+  # Terra dominates; Luna and embeddings are rounding errors at these volumes.
+  # These shares are used to project spend and to decide how much of the month's
+  # remaining money Terra may claim.
+  luna_share_target: 0.10
+  terra_share_target: 0.90
+
+  # Audits are the only way to learn what the funnel throws away, so they get a
+  # protected slice that budget pressure cannot fully consume.
+  calibration_share: 0.10
+
+  # Spend is tracked against a calendar month and resets on the 1st.
+  reset: monthly
+
+  # --- Degradation --------------------------------------------------------
+  # As the month's spend rises, Terra gets progressively more selective rather
+  # than stopping dead. Each stage names the fraction of the monthly target
+  # reached and the minimum opportunity score an item must clear to be worth a
+  # deep evaluation.
+  #
+  # Nothing here rejects an item permanently. Items that miss the cut stay
+  # queued and are reconsidered next run or next month, subject to the freshness
+  # rules below -- a timeless essay waits, a news item expires.
+  degradation:
+    - at_fraction_of_target: 0.00
+      min_opportunity: 0.30
+      label: normal
+    - at_fraction_of_target: 0.70
+      min_opportunity: 0.42
+      label: approaching target
+    - at_fraction_of_target: 1.00
+      min_opportunity: 0.55
+      label: over target
+    - at_fraction_of_target: 1.35
+      min_opportunity: 0.72
+      label: approaching hard limit
+  # At the hard limit only these still buy a Terra call.
+  hard_limit_reserved_for:
+    - essential_candidate
+    - serendipity
+    - audit
+
+  # How long a deferred item stays eligible, by content type. Breaking news is
+  # worthless a week later; an essay is not.
+  requeue_max_age_hours:
+    news: 72
+    analysis: 336
+    essay: 1440
+    reference: 1440
+    default: 336
+
+# --- Terra opportunity ------------------------------------------------------
+# How much upside there is in paying for a deep evaluation, given everything
+# known before one. This allocates budget; it is NOT a quality judgement and
+# never reaches the final ranking.
+terra_opportunity:
+  weights:
+    luna_interest_match: 0.30
+    luna_novelty: 0.18
+    luna_confidence: 0.12
+    free_score: 0.18
+    source_quality_prior: 0.12
+    # A story already represented in the queue has less to add.
+    cluster_differentiation: 0.10
+    # Where another good item would actually improve the edition.
+    feed_need: 0.15
+    serendipity_potential: 0.08
+  penalties:
+    # The nth item from one source this run is worth progressively less.
+    source_saturation: 0.18
+    topic_saturation: 0.12
+  # Luna said UNCERTAIN: exactly the case where a deep look changes the answer.
+  uncertainty_bonus: 0.10
+  # Items that would land in a feed already at its daily cap have little upside.
+  saturated_feed_multiplier: 0.55

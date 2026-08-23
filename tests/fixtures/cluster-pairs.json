@@ -1,0 +1,3625 @@
+{
+  "generated_from": "629 items, 92644 in-window pairs",
+  "labeller": "gpt-5.6-luna",
+  "note": "Labels are model-generated, not human. Treat as a consistent reference for tuning, not ground truth.",
+  "pairs": [
+    {
+      "a": {
+        "id": "509eb567fe60b6865a7f",
+        "source": "simon_willison",
+        "title": "Now we have a timeline of the OpenAI accidental attack against Hugging Face",
+        "published_at": 1786146958000
+      },
+      "b": {
+        "id": "b7ddd31a16bcbfd59fa8",
+        "source": "simon_willison",
+        "title": "Now we have a timeline of the OpenAI accidental attack against Hugging Face",
+        "published_at": 1786198001000
+      },
+      "embedding_similarity": 0.8948,
+      "label": "SAME_STORY_DIFFERENT_PERSPECTIVE",
+      "confidence": 0.98,
+      "reason": "Both concern the same timeline article, but Article 2 is a distinct commentary analyzing and questioning a technical detail from it."
+    },
+    {
+      "a": {
+        "id": "0b307b1cf26485aa3d27",
+        "source": "bandcamp_daily",
+        "title": "The Best Electronic Music on Bandcamp, July 2026",
+        "published_at": 1786109958000
+      },
+      "b": {
+        "id": "30d04026c131b8dba2f5",
+        "source": "bandcamp_daily",
+        "title": "The Best Metal on Bandcamp, July 2026",
+        "published_at": 1786039329000
+      },
+      "embedding_similarity": 0.8726,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.99,
+      "reason": "Both are monthly Bandcamp music recommendation guides, but they cover distinct genres and album selections."
+    },
+    {
+      "a": {
+        "id": "2ea94799eaa742ef2c51",
+        "source": "bandcamp_daily",
+        "title": "The Best Hip-Hop on Bandcamp, July 2026",
+        "published_at": 1785937145000
+      },
+      "b": {
+        "id": "30d04026c131b8dba2f5",
+        "source": "bandcamp_daily",
+        "title": "The Best Metal on Bandcamp, July 2026",
+        "published_at": 1786039329000
+      },
+      "embedding_similarity": 0.8717,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.99,
+      "reason": "Both are monthly Bandcamp music recommendation guides, but they cover different genres and distinct album selections."
+    },
+    {
+      "a": {
+        "id": "0b307b1cf26485aa3d27",
+        "source": "bandcamp_daily",
+        "title": "The Best Electronic Music on Bandcamp, July 2026",
+        "published_at": 1786109958000
+      },
+      "b": {
+        "id": "2ea94799eaa742ef2c51",
+        "source": "bandcamp_daily",
+        "title": "The Best Hip-Hop on Bandcamp, July 2026",
+        "published_at": 1785937145000
+      },
+      "embedding_similarity": 0.8697,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.99,
+      "reason": "Both are monthly Bandcamp album guides, but they cover different genres and distinct LP selections."
+    },
+    {
+      "a": {
+        "id": "0b918ee8e0b55d8cede3",
+        "source": "rock_paper_shotgun",
+        "title": "Deus Ex director and immersive sim legend Warren Spector is retiring, despite having \"three games in particular\" he'd still like to make",
+        "published_at": 1787045331000
+      },
+      "b": {
+        "id": "55dece5fa502bc69ac07",
+        "source": "game_developer",
+        "title": "Deus Ex director Warren Spector is retiring after nearly 45 years in game dev",
+        "published_at": 1787073259000
+      },
+      "embedding_similarity": 0.8545,
+      "label": "SAME_STORY_DUPLICATE",
+      "confidence": 0.98,
+      "reason": "Both articles report Warren Spector's retirement and his remaining ideas for three possible games, with no distinct angle."
+    },
+    {
+      "a": {
+        "id": "08c0c5519ff214bd82f7",
+        "source": "nos_binnenland",
+        "title": "Politie en OM gaan eigen aanpak boerenprotest beoordelen na kritiek: 'Lessen trekken'",
+        "published_at": 1787061854000
+      },
+      "b": {
+        "id": "7f6b61484e822e4f5ead",
+        "source": "nos_binnenland",
+        "title": "Twente treedt op bij boerenprotest: tractoren voortaan geweerd van snelweg",
+        "published_at": 1786986743000
+      },
+      "embedding_similarity": 0.8416,
+      "label": "SAME_STORY_DIFFERENT_PERSPECTIVE",
+      "confidence": 0.93,
+      "reason": "Both concern the same fatal A59 crash following the boerenprotest, but Article 2 focuses on Twente's resulting policy banning tractors from motorways while Article 1 focuses on evaluating police and p"
+    },
+    {
+      "a": {
+        "id": "08c0c5519ff214bd82f7",
+        "source": "nos_binnenland",
+        "title": "Politie en OM gaan eigen aanpak boerenprotest beoordelen na kritiek: 'Lessen trekken'",
+        "published_at": 1787061854000
+      },
+      "b": {
+        "id": "e819cd51562c8de152f5",
+        "source": "nos_binnenland",
+        "title": "OM wil bestuurders van tractoren op snelweg voortaan strafrechtelijk gaan vervolgen",
+        "published_at": 1787158501000
+      },
+      "embedding_similarity": 0.8337,
+      "label": "SAME_STORY_DIFFERENT_PERSPECTIVE",
+      "confidence": 0.87,
+      "reason": "Both concern the same Den Bosch tractor protest and ensuing A59 fatal crash, but the second adds the OM's distinct policy of prosecuting tractor drivers."
+    },
+    {
+      "a": {
+        "id": "0b307b1cf26485aa3d27",
+        "source": "bandcamp_daily",
+        "title": "The Best Electronic Music on Bandcamp, July 2026",
+        "published_at": 1786109958000
+      },
+      "b": {
+        "id": "3f3b359e6ee5aa375d6e",
+        "source": "bandcamp_daily",
+        "title": "The Best Contemporary Classical Music on Bandcamp, July 2026",
+        "published_at": 1786023981000
+      },
+      "embedding_similarity": 0.831,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.99,
+      "reason": "Both are monthly Bandcamp release guides, but they cover distinct genres and different sets of albums."
+    },
+    {
+      "a": {
+        "id": "7f6b61484e822e4f5ead",
+        "source": "nos_binnenland",
+        "title": "Twente treedt op bij boerenprotest: tractoren voortaan geweerd van snelweg",
+        "published_at": 1786986743000
+      },
+      "b": {
+        "id": "e819cd51562c8de152f5",
+        "source": "nos_binnenland",
+        "title": "OM wil bestuurders van tractoren op snelweg voortaan strafrechtelijk gaan vervolgen",
+        "published_at": 1787158501000
+      },
+      "embedding_similarity": 0.8282,
+      "label": "SAME_STORY_DIFFERENT_PERSPECTIVE",
+      "confidence": 0.9,
+      "reason": "Both concern authorities responding to tractor protests on Dutch motorways, but one reports Twente’s regional ban while the other details the OM’s national criminal-prosecution policy."
+    },
+    {
+      "a": {
+        "id": "30d04026c131b8dba2f5",
+        "source": "bandcamp_daily",
+        "title": "The Best Metal on Bandcamp, July 2026",
+        "published_at": 1786039329000
+      },
+      "b": {
+        "id": "3f3b359e6ee5aa375d6e",
+        "source": "bandcamp_daily",
+        "title": "The Best Contemporary Classical Music on Bandcamp, July 2026",
+        "published_at": 1786023981000
+      },
+      "embedding_similarity": 0.8149,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.99,
+      "reason": "Both are monthly Bandcamp release guides, but they cover distinct genres and different albums."
+    },
+    {
+      "a": {
+        "id": "8a63822faf82b2a96fd0",
+        "source": "lennys_newsletter",
+        "title": "How a solo founder used Codex and ChatGPT to launch a fashion brand without engineers | Yana Welinder",
+        "published_at": 1786968242000
+      },
+      "b": {
+        "id": "c4cb331229306003d5c7",
+        "source": "lennys_newsletter",
+        "title": "🎙️ How I AI: How a solo founder used Codex and ChatGPT to launch a fashion brand without engineers",
+        "published_at": 1786978996000
+      },
+      "embedding_similarity": 0.8112,
+      "label": "SAME_STORY_DUPLICATE",
+      "confidence": 0.99,
+      "reason": "Both articles promote the same Lenny's episode about Yana Welinder using Codex and ChatGPT to launch a fashion brand without engineers."
+    },
+    {
+      "a": {
+        "id": "031c7dea0f245d59b4e4",
+        "source": "rock_paper_shotgun",
+        "title": "STALKER 2 gets serious performance and visual upgrades with its 2.0 update, testing confirms, polishing up one of the biggest flawed gems in FPS games",
+        "published_at": 1787146200000
+      },
+      "b": {
+        "id": "304d7cea81e8a8d9627b",
+        "source": "rock_paper_shotgun",
+        "title": "Stalker 2: Heart of Chornobyl's meaty 2.0 update brings functional fog, a suite of A-Life improvements, and more when it arrives next week",
+        "published_at": 1786810214000
+      },
+      "embedding_similarity": 0.8103,
+      "label": "SAME_STORY_DUPLICATE",
+      "confidence": 0.97,
+      "reason": "Both articles from the same outlet cover STALKER 2’s 2.0 update and its visual, fog, and A-Life improvements, with the first mainly reporting post-update testing rather than adding a distinct story."
+    },
+    {
+      "a": {
+        "id": "1e02be8d48c1d98bb4f9",
+        "source": "longreads",
+        "title": "Worm Munch Matters",
+        "published_at": 1787050800000
+      },
+      "b": {
+        "id": "bcb587f0a00ebcdcf89b",
+        "source": "aeon",
+        "title": "Worm munch matters",
+        "published_at": 1786960800000
+      },
+      "embedding_similarity": 0.8044,
+      "label": "SAME_STORY_DUPLICATE",
+      "confidence": 1,
+      "reason": "The titles and summaries are identical, indicating the same article reproduced across sources."
+    },
+    {
+      "a": {
+        "id": "0380a57533fd1cd74d49",
+        "source": "404media",
+        "title": "We Tracked a Shipment of Rare Books. It Ended at an Amazon AI Training Facility",
+        "published_at": 1786972569000
+      },
+      "b": {
+        "id": "b7460e12fd0a7acb561e",
+        "source": "simon_willison",
+        "title": "We Tracked a Shipment of Rare Books. It Ended at an Amazon AI Training Facility",
+        "published_at": 1786980089000
+      },
+      "embedding_similarity": 0.8042,
+      "label": "SAME_STORY_DIFFERENT_PERSPECTIVE",
+      "confidence": 0.97,
+      "reason": "The second article discusses and contextualizes the first report, adding prior coverage and analysis rather than merely reproducing it."
+    },
+    {
+      "a": {
+        "id": "9bee09c8d707d63d42d8",
+        "source": "rock_paper_shotgun",
+        "title": "Saber admit Rideshare \"Stimulator\" features generative AI writing, but deny they replaced taxi game's lead writer with ChatGPT",
+        "published_at": 1786530600000
+      },
+      "b": {
+        "id": "9c8fb8c2419612e8ef69",
+        "source": "rock_paper_shotgun",
+        "title": "Rideshare Stimulator finally gets its genAI disclosure after much Saber-rattling, and it turns out the game also uses the tech for in-game music",
+        "published_at": 1786721190000
+      },
+      "embedding_similarity": 0.804,
+      "label": "SAME_STORY_DIFFERENT_PERSPECTIVE",
+      "confidence": 0.88,
+      "reason": "Both cover Saber's disclosure of generative AI in Rideshare Stimulator, but Article 2 adds details about AI-generated music and the former writer's response and apology."
+    },
+    {
+      "a": {
+        "id": "2ea94799eaa742ef2c51",
+        "source": "bandcamp_daily",
+        "title": "The Best Hip-Hop on Bandcamp, July 2026",
+        "published_at": 1785937145000
+      },
+      "b": {
+        "id": "3f3b359e6ee5aa375d6e",
+        "source": "bandcamp_daily",
+        "title": "The Best Contemporary Classical Music on Bandcamp, July 2026",
+        "published_at": 1786023981000
+      },
+      "embedding_similarity": 0.8015,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.99,
+      "reason": "Both are monthly Bandcamp release guides, but they cover different musical genres and distinct albums."
+    },
+    {
+      "a": {
+        "id": "929dff990cde184c3d98",
+        "source": "nltimes",
+        "title": "Trade unions' ultimatum to Schiphol expires at noon; Security strike looming",
+        "published_at": 1787128620000
+      },
+      "b": {
+        "id": "f024d4cf450682e9ab31",
+        "source": "nltimes",
+        "title": "Schiphol security workers to strike over workload, longer queues expected",
+        "published_at": 1787145000000
+      },
+      "embedding_similarity": 0.7988,
+      "label": "SAME_STORY_DUPLICATE",
+      "confidence": 0.92,
+      "reason": "Both articles report the same impending Schiphol security strikes by FNV and CNV, with the second mainly restating the planned action and its consequences."
+    },
+    {
+      "a": {
+        "id": "031c7dea0f245d59b4e4",
+        "source": "rock_paper_shotgun",
+        "title": "STALKER 2 gets serious performance and visual upgrades with its 2.0 update, testing confirms, polishing up one of the biggest flawed gems in FPS games",
+        "published_at": 1787146200000
+      },
+      "b": {
+        "id": "abe08d50d9d7705b31ec",
+        "source": "rock_paper_shotgun",
+        "title": "STALKER 2: Cost of Hope review: An expanded Zone that begs to be explored, even as its faction war fizzles",
+        "published_at": 1787144400000
+      },
+      "embedding_similarity": 0.7932,
+      "label": "SAME_STORY_DIFFERENT_PERSPECTIVE",
+      "confidence": 0.96,
+      "reason": "Both cover STALKER 2's 2.0-era revival, but one tests the technical update while the other reviews the distinct Cost of Hope expansion and its faction-war content."
+    },
+    {
+      "a": {
+        "id": "5ddfecefc7b6525f6a75",
+        "source": "rock_paper_shotgun",
+        "title": "Latest alleged GTA 6 leak \"risks tarnishing the reputation of our communities\", say Stop Killing Games after hackers claim pro-consumer motivations",
+        "published_at": 1787130938000
+      },
+      "b": {
+        "id": "6c4f5426844d8bec90e0",
+        "source": "rock_paper_shotgun",
+        "title": "GTA 6 footage once again appears to leak online, this time because of a group that wants games like The Crew to have offline modes and the end of digital preorders",
+        "published_at": 1787085068000
+      },
+      "embedding_similarity": 0.7929,
+      "label": "SAME_STORY_DIFFERENT_PERSPECTIVE",
+      "confidence": 0.93,
+      "reason": "Both cover the same alleged GTA 6 leak, but Article 1 focuses on Stop Killing Games distancing itself from the hackers while Article 2 describes the footage and the group's broader demands."
+    },
+    {
+      "a": {
+        "id": "424a706fccbf0d809269",
+        "source": "rock_paper_shotgun",
+        "title": "Five years after acquiring Oxenfree developer Night School Studio, Netflix are shutting them down",
+        "published_at": 1786652965000
+      },
+      "b": {
+        "id": "4ae53abb4784b24ec817",
+        "source": "game_developer",
+        "title": "Netflix closing Oxenfree developer Night School Studio and Moonloot Games",
+        "published_at": 1786650855000
+      },
+      "embedding_similarity": 0.788,
+      "label": "SAME_STORY_DIFFERENT_PERSPECTIVE",
+      "confidence": 0.93,
+      "reason": "Both report Netflix shutting Night School and Moonloot, but Article 2 adds the company's stated rationale while Article 1 provides acquisition and release context."
+    },
+    {
+      "a": {
+        "id": "0e26a8f38f45b3f6c6ad",
+        "source": "simon_willison",
+        "title": "Qwen 3.8 27B scores 52 on the Artificial Analysis Intelligence Index",
+        "published_at": 1787011094000
+      },
+      "b": {
+        "id": "6614f92fedce6caacffd",
+        "source": "simon_willison",
+        "title": "Qwen 3.8 27B is excellent, but it defaults to wildly overthinking things",
+        "published_at": 1786917639000
+      },
+      "embedding_similarity": 0.7852,
+      "label": "SAME_STORY_DIFFERENT_PERSPECTIVE",
+      "confidence": 0.94,
+      "reason": "Both cover the Qwen 3.8 27B release, but one focuses on comparative benchmark scores while the other analyzes its overthinking behavior and practical qualities."
+    },
+    {
+      "a": {
+        "id": "cb4a2628d72adb536722",
+        "source": "game_developer",
+        "title": "Roblox being investigated by U.S. Senate after reporting 65,381 instances of suspected child abuse in 2025",
+        "published_at": 1787048531000
+      },
+      "b": {
+        "id": "cbc711b41b5927db4b02",
+        "source": "rock_paper_shotgun",
+        "title": "The US Senate are investigating Roblox for prioritising \"revenue and engagement metrics over the safety and well-being of our children\"",
+        "published_at": 1786984200000
+      },
+      "embedding_similarity": 0.783,
+      "label": "SAME_STORY_DUPLICATE",
+      "confidence": 0.97,
+      "reason": "Both report the same U.S. Senate investigation into Roblox over alleged failures to protect children, with no meaningfully distinct angle."
+    },
+    {
+      "a": {
+        "id": "ba55146293284dfb7f39",
+        "source": "rock_paper_shotgun",
+        "title": "Mortal Shell 2 review: A monumental heavy metal sequel with the spirit of a '90s PC game",
+        "published_at": 1786977202000
+      },
+      "b": {
+        "id": "fb2cdb53c83f8d463ea1",
+        "source": "rock_paper_shotgun",
+        "title": "Amid accusations of a post-beta difficulty bump, Mortal Shell 2 devs patch the new soulslike to stop players riposting so hard they steal enemy weapons",
+        "published_at": 1787149006000
+      },
+      "embedding_similarity": 0.7809,
+      "label": "SAME_STORY_DIFFERENT_PERSPECTIVE",
+      "confidence": 0.93,
+      "reason": "Both cover Mortal Shell 2, but one is a broad review while the other reports a specific post-beta difficulty controversy and gameplay patch."
+    },
+    {
+      "a": {
+        "id": "c7357a0b03c76ca8866d",
+        "source": "daring_fireball",
+        "title": "Michael Tsai on My Retraction of the Astrology/Astronomy App Store Rejection Story",
+        "published_at": 1786393128000
+      },
+      "b": {
+        "id": "e72f7fe984986818e264",
+        "source": "daring_fireball",
+        "title": "★ Retraction: The App Store Rejection of the Week That Was, in Fact, a Correct Rejection",
+        "published_at": 1786245384000
+      },
+      "embedding_similarity": 0.7798,
+      "label": "SAME_STORY_DUPLICATE",
+      "confidence": 0.98,
+      "reason": "Both are Daring Fireball posts about the same retraction of the astrology app rejection story, with the first merely identifying the retraction and the second providing its text and explanation."
+    },
+    {
+      "a": {
+        "id": "57dc19d342144b7d0064",
+        "source": "game_developer",
+        "title": "Amazon to rescind its publisher role on Lost Ark and Throne and Liberty by early 2027",
+        "published_at": 1786552717000
+      },
+      "b": {
+        "id": "a3b5dfd957d4f43a4665",
+        "source": "rock_paper_shotgun",
+        "title": "Amazon are getting out of the MMO game, handing control of Lost Ark and Throne and Liberty to developers, but it won't all be smooth for players",
+        "published_at": 1786550400000
+      },
+      "embedding_similarity": 0.7797,
+      "label": "SAME_STORY_DIFFERENT_PERSPECTIVE",
+      "confidence": 0.95,
+      "reason": "Both cover Amazon relinquishing publishing and server control of Lost Ark and Throne and Liberty, while Article 2 adds player-impact details about disruption and data loss."
+    },
+    {
+      "a": {
+        "id": "9fe38c0d862f0ffea07f",
+        "source": "dutchnews",
+        "title": "Schiphol security staff begin strike action over workload",
+        "published_at": 1787145287000
+      },
+      "b": {
+        "id": "f024d4cf450682e9ab31",
+        "source": "nltimes",
+        "title": "Schiphol security workers to strike over workload, longer queues expected",
+        "published_at": 1787145000000
+      },
+      "embedding_similarity": 0.7764,
+      "label": "SAME_STORY_DUPLICATE",
+      "confidence": 0.98,
+      "reason": "Both articles report the same planned Schiphol security strikes and resulting delays over workload, with no distinct additional angle."
+    },
+    {
+      "a": {
+        "id": "1259f80bc4f915fa42d2",
+        "source": "lennys_newsletter",
+        "title": "Claude Code for normal people: skills, voice mode, and how to collaborate with AI",
+        "published_at": 1786363304000
+      },
+      "b": {
+        "id": "c0595dc1bccac49ee033",
+        "source": "lennys_newsletter",
+        "title": "🎙️ How I AI: Build an AI code review bot in 30 minutes + Claude Code for normal people",
+        "published_at": 1786374109000
+      },
+      "embedding_similarity": 0.7707,
+      "label": "SAME_STORY_DUPLICATE",
+      "confidence": 0.97,
+      "reason": "Both entries reference the same Lenny's Newsletter podcast item, with Article 2 listing the Article 1 episode as part of the weekly listens."
+    },
+    {
+      "a": {
+        "id": "964f93e48173de0102d3",
+        "source": "daring_fireball",
+        "title": "TechCrunch on Google’s Pixel 11 Lineup",
+        "published_at": 1786563958000
+      },
+      "b": {
+        "id": "e7793a334fa6f1b86b99",
+        "source": "daring_fireball",
+        "title": "Google Introduces ‘Camera Looks’ With Pixel 11 Phones",
+        "published_at": 1786568295000
+      },
+      "embedding_similarity": 0.77,
+      "label": "SAME_STORY_DIFFERENT_PERSPECTIVE",
+      "confidence": 0.86,
+      "reason": "Both concern Google’s Pixel 11 launch, but the second specifically focuses on the new Camera Looks feature while the first broadly discusses the lineup."
+    },
+    {
+      "a": {
+        "id": "4079f6f745e725cc9d4e",
+        "source": "bandcamp_daily",
+        "title": "The Best Ambient Music on Bandcamp, July 2026",
+        "published_at": 1786989333000
+      },
+      "b": {
+        "id": "71d6a06d765ef3a322af",
+        "source": "bandcamp_daily",
+        "title": "Essential Releases, August 14, 2026",
+        "published_at": 1786715054000
+      },
+      "embedding_similarity": 0.7654,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.97,
+      "reason": "Both are Bandcamp Daily music-release recommendation roundups, but they cover different monthly or weekly selections and genres."
+    },
+    {
+      "a": {
+        "id": "1feb85cea519a28ffab2",
+        "source": "dutchnews",
+        "title": "Number of non-EU dentists in NL doubles in five years",
+        "published_at": 1787148701000
+      },
+      "b": {
+        "id": "6a6a411e98f3c14615ab",
+        "source": "nltimes",
+        "title": "Quarter of dentists in the Netherlands came from abroad",
+        "published_at": 1787137800000
+      },
+      "embedding_similarity": 0.7647,
+      "label": "SAME_STORY_DIFFERENT_PERSPECTIVE",
+      "confidence": 0.82,
+      "reason": "Both report the growing share of foreign-trained dentists in the Netherlands, but one emphasizes non-EU arrivals doubling while the other gives the broader quarter-of-all-dentists statistic."
+    },
+    {
+      "a": {
+        "id": "1feb85cea519a28ffab2",
+        "source": "dutchnews",
+        "title": "Number of non-EU dentists in NL doubles in five years",
+        "published_at": 1787148701000
+      },
+      "b": {
+        "id": "326b5d1d173652a9b308",
+        "source": "nos_binnenland",
+        "title": "Aantal tandartsen van buiten EU is verdubbeld, terwijl studenten hier worden uitgeloot",
+        "published_at": 1787062920000
+      },
+      "embedding_similarity": 0.7573,
+      "label": "SAME_STORY_DUPLICATE",
+      "confidence": 0.98,
+      "reason": "Both articles report the same five-year doubling of non-EU-trained dentists entering the Netherlands amid a domestic dentist shortage."
+    },
+    {
+      "a": {
+        "id": "12ea50c8be322b4c804d",
+        "source": "game_developer",
+        "title": "Twitch will sacrifice you to its AI overlord whether you like it or not",
+        "published_at": 1786627187000
+      },
+      "b": {
+        "id": "6e152524e48f97449d37",
+        "source": "404media",
+        "title": "Twitch is Mining Peoples' Streams to Train Amazon's AI",
+        "published_at": 1786557528000
+      },
+      "embedding_similarity": 0.7496,
+      "label": "SAME_STORY_DIFFERENT_PERSPECTIVE",
+      "confidence": 0.91,
+      "reason": "Both cover Twitch using streams for Amazon AI training, but Article 2 focuses on practical opt-out instructions while Article 1 emphasizes the broader implications and limits of opting out."
+    },
+    {
+      "a": {
+        "id": "32e8dfe86c5b291e6275",
+        "source": "nos_binnenland",
+        "title": "Mediaminister Letschert wacht oordeel rechter over boetes voor media af",
+        "published_at": 1787071138000
+      },
+      "b": {
+        "id": "ec5a53045e1cdf955da4",
+        "source": "nos_binnenland",
+        "title": "Kranten en tijdschrift krijgen boetes voor berichtgeving over afslankmedicijnen",
+        "published_at": 1787043595000
+      },
+      "embedding_similarity": 0.7496,
+      "label": "SAME_STORY_DIFFERENT_PERSPECTIVE",
+      "confidence": 0.94,
+      "reason": "Both concern IGJ fines for media coverage of weight-loss drugs, but the first focuses on the minister awaiting judicial review while the second reports the fines and publishers’ concerns."
+    },
+    {
+      "a": {
+        "id": "060cb2176887ef9f3375",
+        "source": "kottke",
+        "title": "G.P.S. and the Lost Art of Getting Lost . “G.P.S....",
+        "published_at": 1786633140000
+      },
+      "b": {
+        "id": "505d7ec0bd4ae49b0470",
+        "source": "longreads",
+        "title": "G.P.S. and the Lost Art of Getting Lost",
+        "published_at": 1786964400000
+      },
+      "embedding_similarity": 0.7496,
+      "label": "SAME_STORY_DUPLICATE",
+      "confidence": 0.98,
+      "reason": "Both articles have the same title and concern the same book's critique of GPS and the loss of getting lost, with no distinct angle indicated."
+    },
+    {
+      "a": {
+        "id": "30d04026c131b8dba2f5",
+        "source": "bandcamp_daily",
+        "title": "The Best Metal on Bandcamp, July 2026",
+        "published_at": 1786039329000
+      },
+      "b": {
+        "id": "40e741019c461aade721",
+        "source": "bandcamp_daily",
+        "title": "The Best Country Music on Bandcamp, July 2026",
+        "published_at": 1786368755000
+      },
+      "embedding_similarity": 0.7454,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.99,
+      "reason": "Both are monthly Bandcamp music recommendation guides, but they cover different genres and distinct album selections."
+    },
+    {
+      "a": {
+        "id": "3f3b359e6ee5aa375d6e",
+        "source": "bandcamp_daily",
+        "title": "The Best Contemporary Classical Music on Bandcamp, July 2026",
+        "published_at": 1786023981000
+      },
+      "b": {
+        "id": "40e741019c461aade721",
+        "source": "bandcamp_daily",
+        "title": "The Best Country Music on Bandcamp, July 2026",
+        "published_at": 1786368755000
+      },
+      "embedding_similarity": 0.7446,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.99,
+      "reason": "Both are monthly Bandcamp music recommendation roundups, but they cover different genres and release selections."
+    },
+    {
+      "a": {
+        "id": "92782bb2385c9c2419c4",
+        "source": "rock_paper_shotgun",
+        "title": "\"Through the looking glass\": as Arkane fight for their future, Dishonored veteran Harvey Smith reveals new studio dedicated to immersive sims",
+        "published_at": 1787144400000
+      },
+      "b": {
+        "id": "98dcf08f7d21a19a7540",
+        "source": "game_developer",
+        "title": "Harvey Smith and fellow Arkane Austin veterans announce a new studio, Black Pony Immersive",
+        "published_at": 1787157310000
+      },
+      "embedding_similarity": 0.7432,
+      "label": "SAME_STORY_DUPLICATE",
+      "confidence": 0.95,
+      "reason": "Both report the same announcement of Harvey Smith and Arkane veterans founding Black Pony Immersive to make first-person action RPGs, with no distinct substantive angle."
+    },
+    {
+      "a": {
+        "id": "55dece5fa502bc69ac07",
+        "source": "game_developer",
+        "title": "Deus Ex director Warren Spector is retiring after nearly 45 years in game dev",
+        "published_at": 1787073259000
+      },
+      "b": {
+        "id": "ccca25e8173895eed87b",
+        "source": "aftermath",
+        "title": "Warren Spector Says He's 'Retiring From Game Development'",
+        "published_at": 1787027479000
+      },
+      "embedding_similarity": 0.7397,
+      "label": "SAME_STORY_DUPLICATE",
+      "confidence": 0.98,
+      "reason": "Both report Warren Spector announcing his retirement from game development, with no substantially different angle."
+    },
+    {
+      "a": {
+        "id": "5cbb51a032d2ddd074ff",
+        "source": "daring_fireball",
+        "title": "Google’s Pixel Watch 5",
+        "published_at": 1786563483000
+      },
+      "b": {
+        "id": "964f93e48173de0102d3",
+        "source": "daring_fireball",
+        "title": "TechCrunch on Google’s Pixel 11 Lineup",
+        "published_at": 1786563958000
+      },
+      "embedding_similarity": 0.7397,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.98,
+      "reason": "Both concern upcoming Google hardware, but one is about the Pixel Watch 5 while the other covers the Pixel 11 phone lineup."
+    },
+    {
+      "a": {
+        "id": "5cbb51a032d2ddd074ff",
+        "source": "daring_fireball",
+        "title": "Google’s Pixel Watch 5",
+        "published_at": 1786563483000
+      },
+      "b": {
+        "id": "e7793a334fa6f1b86b99",
+        "source": "daring_fireball",
+        "title": "Google Introduces ‘Camera Looks’ With Pixel 11 Phones",
+        "published_at": 1786568295000
+      },
+      "embedding_similarity": 0.7325,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.98,
+      "reason": "Both concern Google Pixel products, but one is about the Pixel Watch 5 while the other covers camera features introduced with Pixel 11 phones."
+    },
+    {
+      "a": {
+        "id": "0b918ee8e0b55d8cede3",
+        "source": "rock_paper_shotgun",
+        "title": "Deus Ex director and immersive sim legend Warren Spector is retiring, despite having \"three games in particular\" he'd still like to make",
+        "published_at": 1787045331000
+      },
+      "b": {
+        "id": "ccca25e8173895eed87b",
+        "source": "aftermath",
+        "title": "Warren Spector Says He's 'Retiring From Game Development'",
+        "published_at": 1787027479000
+      },
+      "embedding_similarity": 0.7299,
+      "label": "SAME_STORY_DUPLICATE",
+      "confidence": 0.98,
+      "reason": "Both report Warren Spector's retirement announcement, with Article 1 adding only minor context about possible future projects."
+    },
+    {
+      "a": {
+        "id": "6402b315632c3973f524",
+        "source": "rock_paper_shotgun",
+        "title": "Twitch are scraping streams for AI training by default, and even their own execs don’t know what user data may have been swept up",
+        "published_at": 1786615284000
+      },
+      "b": {
+        "id": "6e152524e48f97449d37",
+        "source": "404media",
+        "title": "Twitch is Mining Peoples' Streams to Train Amazon's AI",
+        "published_at": 1786557528000
+      },
+      "embedding_similarity": 0.7284,
+      "label": "SAME_STORY_DIFFERENT_PERSPECTIVE",
+      "confidence": 0.9,
+      "reason": "Both cover Twitch using streams for Amazon AI training, but Article 2 focuses specifically on practical opt-out instructions while Article 1 provides broader critical reporting and context."
+    },
+    {
+      "a": {
+        "id": "6e4728cb74f5f8709505",
+        "source": "daring_fireball",
+        "title": "Hands-On With Google Pixel 11 Pro Fold",
+        "published_at": 1786563651000
+      },
+      "b": {
+        "id": "964f93e48173de0102d3",
+        "source": "daring_fireball",
+        "title": "TechCrunch on Google’s Pixel 11 Lineup",
+        "published_at": 1786563958000
+      },
+      "embedding_similarity": 0.728,
+      "label": "SAME_STORY_DIFFERENT_PERSPECTIVE",
+      "confidence": 0.9,
+      "reason": "Both concern Google's Pixel 11 announcement, but one is a hands-on foldable review while the other summarizes TechCrunch's broader lineup coverage."
+    },
+    {
+      "a": {
+        "id": "326b5d1d173652a9b308",
+        "source": "nos_binnenland",
+        "title": "Aantal tandartsen van buiten EU is verdubbeld, terwijl studenten hier worden uitgeloot",
+        "published_at": 1787062920000
+      },
+      "b": {
+        "id": "8b6293cd2b1fb1e1b122",
+        "source": "nos_binnenland",
+        "title": "18/8 in Nieuwsuur: Meer buitenlandse tandartsen • Boetes voor media • Fabeltjeskrant keert terug",
+        "published_at": 1787055233000
+      },
+      "embedding_similarity": 0.7277,
+      "label": "SAME_STORY_DUPLICATE",
+      "confidence": 0.98,
+      "reason": "Artikel 2 is a Nieuwsuur roundup that briefly repeats the same foreign-trained dentist influx reported in Article 1 without adding a distinct angle."
+    },
+    {
+      "a": {
+        "id": "1c1563a1609893c63c65",
+        "source": "dutchnews",
+        "title": "Parents of euthanasia teen go to court over prosecution letter",
+        "published_at": 1787133988000
+      },
+      "b": {
+        "id": "2538be659137f0ab60bc",
+        "source": "nltimes",
+        "title": "Parents receiving death threats after teen daughter’s euthanasia",
+        "published_at": 1787161800000
+      },
+      "embedding_similarity": 0.7273,
+      "label": "SAME_STORY_DIFFERENT_PERSPECTIVE",
+      "confidence": 0.9,
+      "reason": "Both concern the same teen euthanasia case, but one focuses on the parents' court challenge while the other reports threats against them."
+    },
+    {
+      "a": {
+        "id": "56484136a489f854e11f",
+        "source": "dutchnews",
+        "title": "Higher oil prices drive up Dutch industrial turnover",
+        "published_at": 1787124382000
+      },
+      "b": {
+        "id": "a57ab62cc3d572a0bac7",
+        "source": "nltimes",
+        "title": "Dutch industrial revenue rises 8.4% in strongest growth since 2022",
+        "published_at": 1787158800000
+      },
+      "embedding_similarity": 0.7261,
+      "label": "SAME_STORY_DUPLICATE",
+      "confidence": 0.98,
+      "reason": "Both report the same 8.4% year-on-year rise in Dutch industrial turnover in Q2 2026, with no distinct angle."
+    },
+    {
+      "a": {
+        "id": "0b307b1cf26485aa3d27",
+        "source": "bandcamp_daily",
+        "title": "The Best Electronic Music on Bandcamp, July 2026",
+        "published_at": 1786109958000
+      },
+      "b": {
+        "id": "a0d8b190f5861302d70b",
+        "source": "bandcamp_daily",
+        "title": "Essential Releases, August 7, 2026",
+        "published_at": 1786109950000
+      },
+      "embedding_similarity": 0.7194,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.98,
+      "reason": "Both are Bandcamp Daily music-release recommendation features, but they cover different selections and publication periods."
+    },
+    {
+      "a": {
+        "id": "2358710c826e9b2af39b",
+        "source": "game_developer",
+        "title": "Report: PlayStation scales back live service ambitions for Horizon Hunters Gathering, reassigns devs",
+        "published_at": 1787146994000
+      },
+      "b": {
+        "id": "5dfc87dd89b96bb94188",
+        "source": "rock_paper_shotgun",
+        "title": "Sony are rebooting their live service Horizon game as a more traditional co-op affair, claim sources, with a proper Horizon Forbidden West sequel still years away",
+        "published_at": 1787152215000
+      },
+      "embedding_similarity": 0.7149,
+      "label": "SAME_STORY_DUPLICATE",
+      "confidence": 0.96,
+      "reason": "Both report the same alleged reboot of Horizon Hunters Gathering, staff reassignment, and shift away from live service, without a meaningfully distinct angle."
+    },
+    {
+      "a": {
+        "id": "0b307b1cf26485aa3d27",
+        "source": "bandcamp_daily",
+        "title": "The Best Electronic Music on Bandcamp, July 2026",
+        "published_at": 1786109958000
+      },
+      "b": {
+        "id": "40e741019c461aade721",
+        "source": "bandcamp_daily",
+        "title": "The Best Country Music on Bandcamp, July 2026",
+        "published_at": 1786368755000
+      },
+      "embedding_similarity": 0.7133,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.99,
+      "reason": "Both are monthly Bandcamp music recommendation roundups, but they cover different genres and distinct album selections."
+    },
+    {
+      "a": {
+        "id": "326b5d1d173652a9b308",
+        "source": "nos_binnenland",
+        "title": "Aantal tandartsen van buiten EU is verdubbeld, terwijl studenten hier worden uitgeloot",
+        "published_at": 1787062920000
+      },
+      "b": {
+        "id": "6a6a411e98f3c14615ab",
+        "source": "nltimes",
+        "title": "Quarter of dentists in the Netherlands came from abroad",
+        "published_at": 1787137800000
+      },
+      "embedding_similarity": 0.7129,
+      "label": "SAME_STORY_DIFFERENT_PERSPECTIVE",
+      "confidence": 0.86,
+      "reason": "Both report the growing share of foreign-trained dentists in the Netherlands, but Article 1 adds detailed recent trends and the contrast with locally rejected students."
+    },
+    {
+      "a": {
+        "id": "b0fcee2e74c46c850e69",
+        "source": "dutchnews",
+        "title": "Dutch media attack “chilling” fines for slimming drugs coverage",
+        "published_at": 1787127453000
+      },
+      "b": {
+        "id": "ec5a53045e1cdf955da4",
+        "source": "nos_binnenland",
+        "title": "Kranten en tijdschrift krijgen boetes voor berichtgeving over afslankmedicijnen",
+        "published_at": 1787043595000
+      },
+      "embedding_similarity": 0.7123,
+      "label": "SAME_STORY_DUPLICATE",
+      "confidence": 0.96,
+      "reason": "Both articles report the same Dutch media fines over coverage of slimming drugs, with no distinct substantive angle evident."
+    },
+    {
+      "a": {
+        "id": "2dc3d160c92e3d1c4227",
+        "source": "simon_willison",
+        "title": "sqlite-utils 4.2.1",
+        "published_at": 1786665227000
+      },
+      "b": {
+        "id": "5955d3bcbd48a0393b83",
+        "source": "simon_willison",
+        "title": "sqlite-utils 4.2",
+        "published_at": 1786651889000
+      },
+      "embedding_similarity": 0.7117,
+      "label": "SAME_STORY_DIFFERENT_PERSPECTIVE",
+      "confidence": 0.98,
+      "reason": "These are successive releases of the same software, but version 4.2.1 is a distinct bug-fix release addressing issues introduced in 4.2 rather than merely repeating its feature announcement."
+    },
+    {
+      "a": {
+        "id": "6e4728cb74f5f8709505",
+        "source": "daring_fireball",
+        "title": "Hands-On With Google Pixel 11 Pro Fold",
+        "published_at": 1786563651000
+      },
+      "b": {
+        "id": "e7793a334fa6f1b86b99",
+        "source": "daring_fireball",
+        "title": "Google Introduces ‘Camera Looks’ With Pixel 11 Phones",
+        "published_at": 1786568295000
+      },
+      "embedding_similarity": 0.71,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.98,
+      "reason": "Both concern Google’s Pixel 11 phones, but one is a hands-on review of the Fold while the other covers the introduction of a camera feature across Pixel 11 models."
+    },
+    {
+      "a": {
+        "id": "12ea50c8be322b4c804d",
+        "source": "game_developer",
+        "title": "Twitch will sacrifice you to its AI overlord whether you like it or not",
+        "published_at": 1786627187000
+      },
+      "b": {
+        "id": "6402b315632c3973f524",
+        "source": "rock_paper_shotgun",
+        "title": "Twitch are scraping streams for AI training by default, and even their own execs don’t know what user data may have been swept up",
+        "published_at": 1786615284000
+      },
+      "embedding_similarity": 0.7084,
+      "label": "SAME_STORY_DIFFERENT_PERSPECTIVE",
+      "confidence": 0.93,
+      "reason": "Both cover Twitch’s default use of streams for Amazon AI training, but Article 2 adds reporting on data uncertainty, executive ignorance, and user backlash."
+    },
+    {
+      "a": {
+        "id": "3f3b359e6ee5aa375d6e",
+        "source": "bandcamp_daily",
+        "title": "The Best Contemporary Classical Music on Bandcamp, July 2026",
+        "published_at": 1786023981000
+      },
+      "b": {
+        "id": "a0d8b190f5861302d70b",
+        "source": "bandcamp_daily",
+        "title": "Essential Releases, August 7, 2026",
+        "published_at": 1786109950000
+      },
+      "embedding_similarity": 0.7082,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.98,
+      "reason": "Both are Bandcamp Daily release roundups, but they cover different editions and distinct sets of music."
+    },
+    {
+      "a": {
+        "id": "0b307b1cf26485aa3d27",
+        "source": "bandcamp_daily",
+        "title": "The Best Electronic Music on Bandcamp, July 2026",
+        "published_at": 1786109958000
+      },
+      "b": {
+        "id": "ae2aa62e8abc47e3d257",
+        "source": "bandcamp_daily",
+        "title": "The Best Field Recordings on Bandcamp, July 2026",
+        "published_at": 1785937127000
+      },
+      "embedding_similarity": 0.706,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.98,
+      "reason": "Both are Bandcamp Daily monthly music recommendations, but they cover different July 2026 genre-based selections: electronic music versus field recordings."
+    },
+    {
+      "a": {
+        "id": "5cbb51a032d2ddd074ff",
+        "source": "daring_fireball",
+        "title": "Google’s Pixel Watch 5",
+        "published_at": 1786563483000
+      },
+      "b": {
+        "id": "6e4728cb74f5f8709505",
+        "source": "daring_fireball",
+        "title": "Hands-On With Google Pixel 11 Pro Fold",
+        "published_at": 1786563651000
+      },
+      "embedding_similarity": 0.7049,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.99,
+      "reason": "Both concern Google Pixel hardware, but one covers the Pixel Watch 5 while the other is a hands-on report about the Pixel 11 Pro Fold."
+    },
+    {
+      "a": {
+        "id": "3f3b359e6ee5aa375d6e",
+        "source": "bandcamp_daily",
+        "title": "The Best Contemporary Classical Music on Bandcamp, July 2026",
+        "published_at": 1786023981000
+      },
+      "b": {
+        "id": "ae2aa62e8abc47e3d257",
+        "source": "bandcamp_daily",
+        "title": "The Best Field Recordings on Bandcamp, July 2026",
+        "published_at": 1785937127000
+      },
+      "embedding_similarity": 0.7043,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.99,
+      "reason": "Both are monthly Bandcamp music recommendation guides, but they cover different genres and release selections."
+    },
+    {
+      "a": {
+        "id": "6f5f5f8f0b0c01c25169",
+        "source": "daring_fireball",
+        "title": "Drata",
+        "published_at": 1786830015000
+      },
+      "b": {
+        "id": "ec0a36cb24c85594a5c1",
+        "source": "daring_fireball",
+        "title": "Nature Is Healing",
+        "published_at": 1786545791000
+      },
+      "embedding_similarity": 0.7024,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "The articles have different titles and no apparent shared subject or story."
+    },
+    {
+      "a": {
+        "id": "304d7cea81e8a8d9627b",
+        "source": "rock_paper_shotgun",
+        "title": "Stalker 2: Heart of Chornobyl's meaty 2.0 update brings functional fog, a suite of A-Life improvements, and more when it arrives next week",
+        "published_at": 1786810214000
+      },
+      "b": {
+        "id": "abe08d50d9d7705b31ec",
+        "source": "rock_paper_shotgun",
+        "title": "STALKER 2: Cost of Hope review: An expanded Zone that begs to be explored, even as its faction war fizzles",
+        "published_at": 1787144400000
+      },
+      "embedding_similarity": 0.7015,
+      "label": "SAME_STORY_DIFFERENT_PERSPECTIVE",
+      "confidence": 0.93,
+      "reason": "Both cover STALKER 2's 2.0 update and its launch alongside the Cost of Hope expansion, but one reports technical features while the other provides a distinct expansion review."
+    },
+    {
+      "a": {
+        "id": "40e741019c461aade721",
+        "source": "bandcamp_daily",
+        "title": "The Best Country Music on Bandcamp, July 2026",
+        "published_at": 1786368755000
+      },
+      "b": {
+        "id": "ae99404c0c81935347ce",
+        "source": "bandcamp_daily",
+        "title": "The Best Latin Music on Bandcamp, July 2026",
+        "published_at": 1786123129000
+      },
+      "embedding_similarity": 0.7001,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.99,
+      "reason": "Both are monthly Bandcamp music roundups, but they cover distinct country and Latin music releases."
+    },
+    {
+      "a": {
+        "id": "4ae53abb4784b24ec817",
+        "source": "game_developer",
+        "title": "Netflix closing Oxenfree developer Night School Studio and Moonloot Games",
+        "published_at": 1786650855000
+      },
+      "b": {
+        "id": "99839fd9e6516fa16b8a",
+        "source": "aftermath",
+        "title": "Netflix Closes Two More Game Studios, Expects Us To Believe It Still Sees ‘Opportunity’ In Games",
+        "published_at": 1786650518000
+      },
+      "embedding_similarity": 0.6979,
+      "label": "SAME_STORY_DIFFERENT_PERSPECTIVE",
+      "confidence": 0.98,
+      "reason": "Both report Netflix closing Night School and Moonloot, but Article 2 adds a critical, skeptical framing about Netflix's games strategy."
+    },
+    {
+      "a": {
+        "id": "3f3b359e6ee5aa375d6e",
+        "source": "bandcamp_daily",
+        "title": "The Best Contemporary Classical Music on Bandcamp, July 2026",
+        "published_at": 1786023981000
+      },
+      "b": {
+        "id": "ae99404c0c81935347ce",
+        "source": "bandcamp_daily",
+        "title": "The Best Latin Music on Bandcamp, July 2026",
+        "published_at": 1786123129000
+      },
+      "embedding_similarity": 0.6979,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.99,
+      "reason": "Both are monthly Bandcamp music recommendation guides, but they cover different genre-specific releases and stories."
+    },
+    {
+      "a": {
+        "id": "30d04026c131b8dba2f5",
+        "source": "bandcamp_daily",
+        "title": "The Best Metal on Bandcamp, July 2026",
+        "published_at": 1786039329000
+      },
+      "b": {
+        "id": "a0d8b190f5861302d70b",
+        "source": "bandcamp_daily",
+        "title": "Essential Releases, August 7, 2026",
+        "published_at": 1786109950000
+      },
+      "embedding_similarity": 0.6978,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.98,
+      "reason": "Both are Bandcamp Daily music-release recommendation roundups, but they cover different monthly or weekly selections and genres."
+    },
+    {
+      "a": {
+        "id": "30d04026c131b8dba2f5",
+        "source": "bandcamp_daily",
+        "title": "The Best Metal on Bandcamp, July 2026",
+        "published_at": 1786039329000
+      },
+      "b": {
+        "id": "ae2aa62e8abc47e3d257",
+        "source": "bandcamp_daily",
+        "title": "The Best Field Recordings on Bandcamp, July 2026",
+        "published_at": 1785937127000
+      },
+      "embedding_similarity": 0.696,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.99,
+      "reason": "Both are July 2026 Bandcamp Daily genre guides, but one covers metal albums and the other covers field recordings."
+    },
+    {
+      "a": {
+        "id": "03c3b43af220531d4516",
+        "source": "daring_fireball",
+        "title": "Google Design Pisses Its Pants on Twitter/X",
+        "published_at": 1786583025000
+      },
+      "b": {
+        "id": "74f69842013e311d291b",
+        "source": "daring_fireball",
+        "title": "Google’s ‘Material 3’ Design Write-Up Is 93.3 Percent Embarrassing",
+        "published_at": 1786725235000
+      },
+      "embedding_similarity": 0.696,
+      "label": "SAME_STORY_DUPLICATE",
+      "confidence": 0.97,
+      "reason": "Both are Daring Fireball posts criticizing the same Google Material 3 design write-up, with no indication of a distinct story or added perspective."
+    },
+    {
+      "a": {
+        "id": "929dff990cde184c3d98",
+        "source": "nltimes",
+        "title": "Trade unions' ultimatum to Schiphol expires at noon; Security strike looming",
+        "published_at": 1787128620000
+      },
+      "b": {
+        "id": "9fe38c0d862f0ffea07f",
+        "source": "dutchnews",
+        "title": "Schiphol security staff begin strike action over workload",
+        "published_at": 1787145287000
+      },
+      "embedding_similarity": 0.6957,
+      "label": "SAME_STORY_DIFFERENT_PERSPECTIVE",
+      "confidence": 0.93,
+      "reason": "Both cover the same Schiphol security labor dispute, but the second reports the resulting strike action while the first focuses on the ultimatum deadline."
+    },
+    {
+      "a": {
+        "id": "66e75171c5397b77c365",
+        "source": "nltimes",
+        "title": "Dutch households’ investments surge 12% in strongest quarter since 2018",
+        "published_at": 1787143800000
+      },
+      "b": {
+        "id": "a57ab62cc3d572a0bac7",
+        "source": "nltimes",
+        "title": "Dutch industrial revenue rises 8.4% in strongest growth since 2022",
+        "published_at": 1787158800000
+      },
+      "embedding_similarity": 0.687,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.99,
+      "reason": "Both concern Dutch economic performance, but one reports household investment gains while the other covers industrial revenue growth."
+    },
+    {
+      "a": {
+        "id": "1d45690c8c2527a9e97c",
+        "source": "parool_amsterdam",
+        "title": "Waarom het Vondelpark amper last heeft van muggen, maar jouw balkon juist wel: ‘We hebben een steekmuggenparadijs geschapen’",
+        "published_at": 1787055300000
+      },
+      "b": {
+        "id": "316f5b52fe9e3479d811",
+        "source": "parool_amsterdam",
+        "title": "Tuinontwerper Inge Slothouber tipt hoe je met je balkon of dak bijdraagt aan groen in de stad: ‘Laten we de insectenapocalyps een beetje tegengaan’",
+        "published_at": 1787075220000
+      },
+      "embedding_similarity": 0.6869,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.92,
+      "reason": "Both concern urban greenery and insects in Amsterdam, but one explains mosquito prevalence while the other offers balcony and rooftop greening advice."
+    },
+    {
+      "a": {
+        "id": "2ea94799eaa742ef2c51",
+        "source": "bandcamp_daily",
+        "title": "The Best Hip-Hop on Bandcamp, July 2026",
+        "published_at": 1785937145000
+      },
+      "b": {
+        "id": "ae2aa62e8abc47e3d257",
+        "source": "bandcamp_daily",
+        "title": "The Best Field Recordings on Bandcamp, July 2026",
+        "published_at": 1785937127000
+      },
+      "embedding_similarity": 0.6833,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.99,
+      "reason": "Both are monthly Bandcamp music recommendation guides, but they cover different genres and releases."
+    },
+    {
+      "a": {
+        "id": "350e64f56e3da392616e",
+        "source": "simon_willison",
+        "title": "alchemy-utils 0.1a1",
+        "published_at": 1786590197000
+      },
+      "b": {
+        "id": "5e432ce5627858ef0f2c",
+        "source": "simon_willison",
+        "title": "alchemy-utils 0.1a0",
+        "published_at": 1786564290000
+      },
+      "embedding_similarity": 0.6828,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.98,
+      "reason": "These are successive releases of the same project, but distinct version-release stories with the later one focused on performance improvements."
+    },
+    {
+      "a": {
+        "id": "71d6a06d765ef3a322af",
+        "source": "bandcamp_daily",
+        "title": "Essential Releases, August 14, 2026",
+        "published_at": 1786715054000
+      },
+      "b": {
+        "id": "93a0a3305032ce1ab937",
+        "source": "bandcamp_daily",
+        "title": "Uncovering Obscure Records",
+        "published_at": 1786730621000
+      },
+      "embedding_similarity": 0.6809,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "The articles cover different music topics: a general list of August releases versus obscure records from Brian Eno's short-lived label."
+    },
+    {
+      "a": {
+        "id": "424a706fccbf0d809269",
+        "source": "rock_paper_shotgun",
+        "title": "Five years after acquiring Oxenfree developer Night School Studio, Netflix are shutting them down",
+        "published_at": 1786652965000
+      },
+      "b": {
+        "id": "99839fd9e6516fa16b8a",
+        "source": "aftermath",
+        "title": "Netflix Closes Two More Game Studios, Expects Us To Believe It Still Sees ‘Opportunity’ In Games",
+        "published_at": 1786650518000
+      },
+      "embedding_similarity": 0.68,
+      "label": "SAME_STORY_DIFFERENT_PERSPECTIVE",
+      "confidence": 0.96,
+      "reason": "Both report Netflix shutting Night School and Moonloot, but Article 2 adds a distinct critical perspective on Netflix’s games strategy."
+    },
+    {
+      "a": {
+        "id": "3265fa1803b2cca17d7a",
+        "source": "daring_fireball",
+        "title": "★ Anthropic’s ‘Watermark’ Text Adulteration in Claude Is a Perversion of Writing",
+        "published_at": 1786908393000
+      },
+      "b": {
+        "id": "74accc8abe368ea918b4",
+        "source": "daring_fireball",
+        "title": "★ Follow-Up Thoughts on Watermarking Schemes for AI-Generated Text",
+        "published_at": 1787014513000
+      },
+      "embedding_similarity": 0.68,
+      "label": "SAME_STORY_DIFFERENT_PERSPECTIVE",
+      "confidence": 0.93,
+      "reason": "The follow-up addresses the same Claude/AI text watermarking controversy but develops broader, distinct reflections on usability and the persistence of AI-generated text."
+    },
+    {
+      "a": {
+        "id": "19190b4c6c2b3a087241",
+        "source": "nos_binnenland",
+        "title": "Politie Amsterdam krijgt 140 tips over identiteit van 'Lucky'",
+        "published_at": 1787038182000
+      },
+      "b": {
+        "id": "d904d5a8ed4dd4ebca5c",
+        "source": "dutchnews",
+        "title": "Online sleuth links Amsterdam’s “Lucky” to Canadian cold case",
+        "published_at": 1787152826000
+      },
+      "embedding_similarity": 0.6791,
+      "label": "SAME_STORY_DIFFERENT_PERSPECTIVE",
+      "confidence": 0.9,
+      "reason": "Both cover the search for Amsterdam care-home resident “Lucky,” but the second adds a distinct online-sleuth theory linking him to a Canadian cold case."
+    },
+    {
+      "a": {
+        "id": "15e5e620ad3e06344079",
+        "source": "parool_amsterdam",
+        "title": "Veiligheidsrisicogebied in enkele buurten Amsterdam-Zuidoost vanwege toename geweldsincidenten",
+        "published_at": 1786978080000
+      },
+      "b": {
+        "id": "a49967a21ce58c93a7ee",
+        "source": "parool_amsterdam",
+        "title": "Woning in Oost dicht na prostitutie, verkrachting en wietplantage met 191 planten",
+        "published_at": 1786701300000
+      },
+      "embedding_similarity": 0.6769,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "The articles concern different Amsterdam areas and separate issues: a safety-risk designation versus a closed residence involving criminal activity."
+    },
+    {
+      "a": {
+        "id": "3c96b0addf4329520b3d",
+        "source": "lennys_newsletter",
+        "title": "How to make people care about your startup",
+        "published_at": 1786455067000
+      },
+      "b": {
+        "id": "9d2ce0ca6ac3a3a22ceb",
+        "source": "lennys_newsletter",
+        "title": "🧠 Community Wisdom: Crafting outreach that reads as authentic, finding design partners, what counts as a moat when anyone can build, making a product vision stick, and more",
+        "published_at": 1786208894000
+      },
+      "embedding_similarity": 0.6755,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.93,
+      "reason": "Both address startup communication and growth, but they are distinct newsletter pieces covering different specific content."
+    },
+    {
+      "a": {
+        "id": "36ee83a5167cce734da4",
+        "source": "bandcamp_daily",
+        "title": "Papangu, “Celestial”",
+        "published_at": 1786109935000
+      },
+      "b": {
+        "id": "a0d8b190f5861302d70b",
+        "source": "bandcamp_daily",
+        "title": "Essential Releases, August 7, 2026",
+        "published_at": 1786109950000
+      },
+      "embedding_similarity": 0.6715,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.97,
+      "reason": "Both cover experimental music releases, but one profiles Papangu's “Celestial” while the other is a broader essential-releases roundup."
+    },
+    {
+      "a": {
+        "id": "ae2aa62e8abc47e3d257",
+        "source": "bandcamp_daily",
+        "title": "The Best Field Recordings on Bandcamp, July 2026",
+        "published_at": 1785937127000
+      },
+      "b": {
+        "id": "ae99404c0c81935347ce",
+        "source": "bandcamp_daily",
+        "title": "The Best Latin Music on Bandcamp, July 2026",
+        "published_at": 1786123129000
+      },
+      "embedding_similarity": 0.6677,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.99,
+      "reason": "Both are monthly Bandcamp music recommendation articles, but they cover different genres and release selections."
+    },
+    {
+      "a": {
+        "id": "93b195399bde2784708b",
+        "source": "game_developer",
+        "title": "Update: Saber Interactive CEO apologizes to former employee over AI replacement dispute",
+        "published_at": 1786631460000
+      },
+      "b": {
+        "id": "9c8fb8c2419612e8ef69",
+        "source": "rock_paper_shotgun",
+        "title": "Rideshare Stimulator finally gets its genAI disclosure after much Saber-rattling, and it turns out the game also uses the tech for in-game music",
+        "published_at": 1786721190000
+      },
+      "embedding_similarity": 0.6668,
+      "label": "SAME_STORY_DIFFERENT_PERSPECTIVE",
+      "confidence": 0.95,
+      "reason": "Both cover the Saber CEO's apology to former writer over AI use, while Article 2 adds reporting about the game's AI disclosure and music generation."
+    },
+    {
+      "a": {
+        "id": "40e741019c461aade721",
+        "source": "bandcamp_daily",
+        "title": "The Best Country Music on Bandcamp, July 2026",
+        "published_at": 1786368755000
+      },
+      "b": {
+        "id": "a0d8b190f5861302d70b",
+        "source": "bandcamp_daily",
+        "title": "Essential Releases, August 7, 2026",
+        "published_at": 1786109950000
+      },
+      "embedding_similarity": 0.6666,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.98,
+      "reason": "Both are Bandcamp music recommendation roundups, but they cover different release selections and genres."
+    },
+    {
+      "a": {
+        "id": "0b307b1cf26485aa3d27",
+        "source": "bandcamp_daily",
+        "title": "The Best Electronic Music on Bandcamp, July 2026",
+        "published_at": 1786109958000
+      },
+      "b": {
+        "id": "ae99404c0c81935347ce",
+        "source": "bandcamp_daily",
+        "title": "The Best Latin Music on Bandcamp, July 2026",
+        "published_at": 1786123129000
+      },
+      "embedding_similarity": 0.665,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.99,
+      "reason": "Both are monthly Bandcamp music recommendation guides, but they cover different genre-specific release selections."
+    },
+    {
+      "a": {
+        "id": "71d6a06d765ef3a322af",
+        "source": "bandcamp_daily",
+        "title": "Essential Releases, August 14, 2026",
+        "published_at": 1786715054000
+      },
+      "b": {
+        "id": "8d4574960f1e1cd3059d",
+        "source": "bandcamp_daily",
+        "title": "Maya Ongaku, “Nothing Space Music”",
+        "published_at": 1786543207000
+      },
+      "embedding_similarity": 0.6621,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.99,
+      "reason": "Both concern music releases on Bandcamp Daily, but one is a broad roundup and the other is a specific review of Maya Ongaku."
+    },
+    {
+      "a": {
+        "id": "2ea94799eaa742ef2c51",
+        "source": "bandcamp_daily",
+        "title": "The Best Hip-Hop on Bandcamp, July 2026",
+        "published_at": 1785937145000
+      },
+      "b": {
+        "id": "a0d8b190f5861302d70b",
+        "source": "bandcamp_daily",
+        "title": "Essential Releases, August 7, 2026",
+        "published_at": 1786109950000
+      },
+      "embedding_similarity": 0.662,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.99,
+      "reason": "Both are Bandcamp Daily music recommendation roundups, but they cover different release selections and genres/monthly contexts."
+    },
+    {
+      "a": {
+        "id": "0c1345151d21ad19f240",
+        "source": "rock_paper_shotgun",
+        "title": "Immortality developer Sam Barlow reveals Precognition, a sci-fi horror collaboration with Brandon Cronenberg about \"really terrible things that are just around the corner\"",
+        "published_at": 1786563000000
+      },
+      "b": {
+        "id": "47132d2a4a078ae2e1d2",
+        "source": "rock_paper_shotgun",
+        "title": "Phasmophobia devs Kinetic Games mosey into publishing with a witchy delivery game, a parasitic Metroidvania, and more",
+        "published_at": 1786647671000
+      },
+      "embedding_similarity": 0.6595,
+      "label": "SAME_STORY_DIFFERENT_PERSPECTIVE",
+      "confidence": 0.95,
+      "reason": "Both cover the announcement of Sam Barlow and Brandon Cronenberg's Precognition, but Article 2 places it within Kinetic Games' broader publishing slate while Article 1 focuses on the game's details."
+    },
+    {
+      "a": {
+        "id": "daeaeb33304ebf0bc224",
+        "source": "daring_fireball",
+        "title": "Anthropic Posts ‘How Claude Marks AI-Generated Content’ Without Explaining How Claude Marks AI-Generated Content",
+        "published_at": 1786471162000
+      },
+      "b": {
+        "id": "e17affae02d73ca8e77b",
+        "source": "daring_fireball",
+        "title": "The Economist: ‘How to Spot AI Writing’",
+        "published_at": 1786484226000
+      },
+      "embedding_similarity": 0.6585,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.93,
+      "reason": "Both concern detecting AI-generated writing, but one critiques Anthropic's Claude-marking disclosure while the other discusses The Economist's methods for spotting AI writing."
+    },
+    {
+      "a": {
+        "id": "406dc790000a126ac096",
+        "source": "dutchnews",
+        "title": "AI share prices lift household investments to a record high",
+        "published_at": 1787127446000
+      },
+      "b": {
+        "id": "66e75171c5397b77c365",
+        "source": "nltimes",
+        "title": "Dutch households’ investments surge 12% in strongest quarter since 2018",
+        "published_at": 1787143800000
+      },
+      "embedding_similarity": 0.6579,
+      "label": "SAME_STORY_DIFFERENT_PERSPECTIVE",
+      "confidence": 0.86,
+      "reason": "Both report the same DNB-measured record rise in Dutch household investments, but the first emphasizes AI-driven share prices while the second focuses on the quarterly magnitude and historical compari"
+    },
+    {
+      "a": {
+        "id": "99ae6baa451be2f6a37e",
+        "source": "parool_amsterdam",
+        "title": "Sarphatistraat is een ‘crackstrip’ geworden, zeggen buurtbewoners: ‘Daklozen slapen weken in tentjes en niemand doet iets’",
+        "published_at": 1786928400000
+      },
+      "b": {
+        "id": "a49967a21ce58c93a7ee",
+        "source": "parool_amsterdam",
+        "title": "Woning in Oost dicht na prostitutie, verkrachting en wietplantage met 191 planten",
+        "published_at": 1786701300000
+      },
+      "embedding_similarity": 0.6577,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.98,
+      "reason": "Both concern problems in Amsterdam Oost, but one reports street nuisance and homelessness while the other concerns a specific home closed for prostitution, rape, and cannabis cultivation."
+    },
+    {
+      "a": {
+        "id": "03c3b43af220531d4516",
+        "source": "daring_fireball",
+        "title": "Google Design Pisses Its Pants on Twitter/X",
+        "published_at": 1786583025000
+      },
+      "b": {
+        "id": "36fb3482e3c72c15517d",
+        "source": "daring_fireball",
+        "title": "XCancel — An Unofficial Twitter/X Mirror",
+        "published_at": 1786890796000
+      },
+      "embedding_similarity": 0.6574,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.98,
+      "reason": "Both concern Twitter/X, but one criticizes Google’s design and the other describes an unofficial X mirror."
+    },
+    {
+      "a": {
+        "id": "914fe56471ed4fb5c736",
+        "source": "dutchnews",
+        "title": "Criminals cashing in on black market for non-deposit cans",
+        "published_at": 1787138452000
+      },
+      "b": {
+        "id": "fa4207bc487186afc24f",
+        "source": "nos_binnenland",
+        "title": "Criminelen verdienen miljoenen aan blikjes zonder statiegeld, meldt EenVandaag",
+        "published_at": 1787128971000
+      },
+      "embedding_similarity": 0.6569,
+      "label": "SAME_STORY_DUPLICATE",
+      "confidence": 0.98,
+      "reason": "Both articles report the same EenVandaag investigation into criminal profits from illegally imported cans sold without Dutch deposits."
+    },
+    {
+      "a": {
+        "id": "2ea94799eaa742ef2c51",
+        "source": "bandcamp_daily",
+        "title": "The Best Hip-Hop on Bandcamp, July 2026",
+        "published_at": 1785937145000
+      },
+      "b": {
+        "id": "ae99404c0c81935347ce",
+        "source": "bandcamp_daily",
+        "title": "The Best Latin Music on Bandcamp, July 2026",
+        "published_at": 1786123129000
+      },
+      "embedding_similarity": 0.6562,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.99,
+      "reason": "Both are Bandcamp monthly music recommendation guides, but they cover different genre-specific releases and editorial selections."
+    },
+    {
+      "a": {
+        "id": "15e5e620ad3e06344079",
+        "source": "parool_amsterdam",
+        "title": "Veiligheidsrisicogebied in enkele buurten Amsterdam-Zuidoost vanwege toename geweldsincidenten",
+        "published_at": 1786978080000
+      },
+      "b": {
+        "id": "55812c7e4b7166727e4c",
+        "source": "parool_amsterdam",
+        "title": "Veel schade na explosie bij juwelier op Buikslotermeerplein in Amsterdam-Noord",
+        "published_at": 1787122575000
+      },
+      "embedding_similarity": 0.6559,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.98,
+      "reason": "Both concern violence and public safety in Amsterdam, but they report separate incidents in different districts."
+    },
+    {
+      "a": {
+        "id": "5ddfecefc7b6525f6a75",
+        "source": "rock_paper_shotgun",
+        "title": "Latest alleged GTA 6 leak \"risks tarnishing the reputation of our communities\", say Stop Killing Games after hackers claim pro-consumer motivations",
+        "published_at": 1787130938000
+      },
+      "b": {
+        "id": "5ebac54044728a3d06cf",
+        "source": "rock_paper_shotgun",
+        "title": "Rather than calling for GTA 6 boycott, fired Rockstar workers urge players to support them in their legal battle against the studio by buying union merch",
+        "published_at": 1787055646000
+      },
+      "embedding_similarity": 0.654,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.98,
+      "reason": "Both concern GTA 6, Rockstar, and consumer or labor activism, but they cover separate events involving an alleged leak versus former workers' legal campaign."
+    },
+    {
+      "a": {
+        "id": "082859244cd79c5a5b05",
+        "source": "daring_fireball",
+        "title": "Mark Zuckerberg Posts 6,500-Word AI Essay",
+        "published_at": 1786476996000
+      },
+      "b": {
+        "id": "e17affae02d73ca8e77b",
+        "source": "daring_fireball",
+        "title": "The Economist: ‘How to Spot AI Writing’",
+        "published_at": 1786484226000
+      },
+      "embedding_similarity": 0.6533,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.98,
+      "reason": "Both concern AI writing and discourse, but one covers Zuckerberg's essay while the other discusses detecting AI-generated prose."
+    },
+    {
+      "a": {
+        "id": "5955d3bcbd48a0393b83",
+        "source": "simon_willison",
+        "title": "sqlite-utils 4.2",
+        "published_at": 1786651889000
+      },
+      "b": {
+        "id": "5e432ce5627858ef0f2c",
+        "source": "simon_willison",
+        "title": "alchemy-utils 0.1a0",
+        "published_at": 1786564290000
+      },
+      "embedding_similarity": 0.652,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.98,
+      "reason": "Both concern Simon Willison's database utility libraries, but they describe distinct releases and projects rather than the same underlying event."
+    },
+    {
+      "a": {
+        "id": "3dd3049cb9f6e4b79935",
+        "source": "rock_paper_shotgun",
+        "title": "What are we all playing this weekend?",
+        "published_at": 1786777260000
+      },
+      "b": {
+        "id": "b03987d6e55d60e29f31",
+        "source": "rock_paper_shotgun",
+        "title": "This week in PC games: survival horror in a waterlogged city, kaiju chaos in a destructible city, and old school GTA vibes in an isometric insurgency simulator",
+        "published_at": 1786965590000
+      },
+      "embedding_similarity": 0.6511,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.98,
+      "reason": "Both discuss PC games on Rock Paper Shotgun, but one is a weekend-playing roundup while the other previews notable upcoming releases."
+    },
+    {
+      "a": {
+        "id": "c6ed50360ce96e01a349",
+        "source": "nltimes",
+        "title": "Amsterdam police investigating resemblance between unidentified man & missing Canadian",
+        "published_at": 1787152020000
+      },
+      "b": {
+        "id": "d904d5a8ed4dd4ebca5c",
+        "source": "dutchnews",
+        "title": "Online sleuth links Amsterdam’s “Lucky” to Canadian cold case",
+        "published_at": 1787152826000
+      },
+      "embedding_similarity": 0.6504,
+      "label": "SAME_STORY_DUPLICATE",
+      "confidence": 0.93,
+      "reason": "Both articles report the same online-led identification link between Amsterdam's unidentified “Lucky” and the Canadian man missing since 1993."
+    },
+    {
+      "a": {
+        "id": "6f172ddd61c4c68f256d",
+        "source": "bandcamp_daily",
+        "title": "Reggae Left Behind By Streaming",
+        "published_at": 1786382670000
+      },
+      "b": {
+        "id": "71d6a06d765ef3a322af",
+        "source": "bandcamp_daily",
+        "title": "Essential Releases, August 14, 2026",
+        "published_at": 1786715054000
+      },
+      "embedding_similarity": 0.6495,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "The articles cover different Bandcamp editorial topics: reggae unavailable on streaming versus a general selection of essential releases."
+    },
+    {
+      "a": {
+        "id": "c4cb331229306003d5c7",
+        "source": "lennys_newsletter",
+        "title": "🎙️ How I AI: How a solo founder used Codex and ChatGPT to launch a fashion brand without engineers",
+        "published_at": 1786978996000
+      },
+      "b": {
+        "id": "ef18181a6cfa6aba1cb2",
+        "source": "lennys_newsletter",
+        "title": "OpenAI’s Head of Design: This is the best time in history to be a designer | Ian Silber",
+        "published_at": 1786883502000
+      },
+      "embedding_similarity": 0.6485,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.98,
+      "reason": "Both concern AI and design/product creation, but they feature different guests and distinct stories—an AI-built fashion startup versus OpenAI’s design perspective."
+    },
+    {
+      "a": {
+        "id": "30d04026c131b8dba2f5",
+        "source": "bandcamp_daily",
+        "title": "The Best Metal on Bandcamp, July 2026",
+        "published_at": 1786039329000
+      },
+      "b": {
+        "id": "ae99404c0c81935347ce",
+        "source": "bandcamp_daily",
+        "title": "The Best Latin Music on Bandcamp, July 2026",
+        "published_at": 1786123129000
+      },
+      "embedding_similarity": 0.6436,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.99,
+      "reason": "Both are Bandcamp monthly music recommendation guides, but they cover different genre-specific releases."
+    },
+    {
+      "a": {
+        "id": "d904d5a8ed4dd4ebca5c",
+        "source": "dutchnews",
+        "title": "Online sleuth links Amsterdam’s “Lucky” to Canadian cold case",
+        "published_at": 1787152826000
+      },
+      "b": {
+        "id": "e39457f3137f51c767d6",
+        "source": "parool_amsterdam",
+        "title": "Vermiste Canadees lijkt sprekend op ‘Lucky’, maar politie is terughoudend over mogelijke match",
+        "published_at": 1787144640000
+      },
+      "embedding_similarity": 0.6424,
+      "label": "SAME_STORY_DIFFERENT_PERSPECTIVE",
+      "confidence": 0.93,
+      "reason": "Both cover the suspected link between Amsterdam's unidentified 'Lucky' and a missing Canadian, but the second adds police caution and a distinct local reporting angle."
+    },
+    {
+      "a": {
+        "id": "a0d8b190f5861302d70b",
+        "source": "bandcamp_daily",
+        "title": "Essential Releases, August 7, 2026",
+        "published_at": 1786109950000
+      },
+      "b": {
+        "id": "ae2aa62e8abc47e3d257",
+        "source": "bandcamp_daily",
+        "title": "The Best Field Recordings on Bandcamp, July 2026",
+        "published_at": 1785937127000
+      },
+      "embedding_similarity": 0.6415,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.98,
+      "reason": "Both are Bandcamp music recommendation lists, but they cover different releases and themes: August essentials versus July field recordings."
+    },
+    {
+      "a": {
+        "id": "2dc3d160c92e3d1c4227",
+        "source": "simon_willison",
+        "title": "sqlite-utils 4.2.1",
+        "published_at": 1786665227000
+      },
+      "b": {
+        "id": "5e432ce5627858ef0f2c",
+        "source": "simon_willison",
+        "title": "alchemy-utils 0.1a0",
+        "published_at": 1786564290000
+      },
+      "embedding_similarity": 0.6404,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.98,
+      "reason": "Both concern Simon Willison's database utilities, but one is a sqlite-utils bug-fix release while the other introduces a separate database-agnostic prototype."
+    },
+    {
+      "a": {
+        "id": "092d13ff637bba02467b",
+        "source": "latent_space",
+        "title": "[AINews] Muse Glimmer and Spark: Open Weights return Personal Superintelligence promise",
+        "published_at": 1786425401000
+      },
+      "b": {
+        "id": "cfd8fb984dff35661726",
+        "source": "simon_willison",
+        "title": "Introducing Muse Glimmer",
+        "published_at": 1786406163000
+      },
+      "embedding_similarity": 0.6375,
+      "label": "SAME_STORY_DIFFERENT_PERSPECTIVE",
+      "confidence": 0.95,
+      "reason": "Both cover Meta's Muse Glimmer release, but Article 2 provides detailed technical and benchmark information while Article 1 offers broader commentary about open models and local hardware."
+    },
+    {
+      "a": {
+        "id": "7ece4bce6a9ec9a2e4fa",
+        "source": "simon_willison",
+        "title": "Stealing Reasoning Traces from Proprietary LLM APIs",
+        "published_at": 1786488045000
+      },
+      "b": {
+        "id": "d4f766f24a0597e00862",
+        "source": "latent_space",
+        "title": "[AINews] How to steal a Reasoning Trace",
+        "published_at": 1786518668000
+      },
+      "embedding_similarity": 0.6363,
+      "label": "SAME_STORY_DIFFERENT_PERSPECTIVE",
+      "confidence": 0.9,
+      "reason": "Both discuss stealing reasoning traces from proprietary LLMs, but Article 2 appears to provide a distinct technical or analytical framing rather than simply reproducing Article 1."
+    },
+    {
+      "a": {
+        "id": "8b6293cd2b1fb1e1b122",
+        "source": "nos_binnenland",
+        "title": "18/8 in Nieuwsuur: Meer buitenlandse tandartsen • Boetes voor media • Fabeltjeskrant keert terug",
+        "published_at": 1787055233000
+      },
+      "b": {
+        "id": "ec5a53045e1cdf955da4",
+        "source": "nos_binnenland",
+        "title": "Kranten en tijdschrift krijgen boetes voor berichtgeving over afslankmedicijnen",
+        "published_at": 1787043595000
+      },
+      "embedding_similarity": 0.6339,
+      "label": "SAME_STORY_DUPLICATE",
+      "confidence": 0.98,
+      "reason": "Both describe the IGJ fines imposed on Dutch media for alleged public advertising in coverage of weight-loss drugs, with no distinct added perspective."
+    },
+    {
+      "a": {
+        "id": "40e741019c461aade721",
+        "source": "bandcamp_daily",
+        "title": "The Best Country Music on Bandcamp, July 2026",
+        "published_at": 1786368755000
+      },
+      "b": {
+        "id": "6f172ddd61c4c68f256d",
+        "source": "bandcamp_daily",
+        "title": "Reggae Left Behind By Streaming",
+        "published_at": 1786382670000
+      },
+      "embedding_similarity": 0.6196,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.98,
+      "reason": "Both are Bandcamp music recommendation features, but one covers country music while the other focuses on reggae unavailable on streaming services."
+    },
+    {
+      "a": {
+        "id": "3265fa1803b2cca17d7a",
+        "source": "daring_fireball",
+        "title": "★ Anthropic’s ‘Watermark’ Text Adulteration in Claude Is a Perversion of Writing",
+        "published_at": 1786908393000
+      },
+      "b": {
+        "id": "969bb739fa25216d9837",
+        "source": "daring_fireball",
+        "title": "‘Anthropic’s Weak Watermarks Appease a Weak Law’",
+        "published_at": 1786901400000
+      },
+      "embedding_similarity": 0.6156,
+      "label": "SAME_STORY_DUPLICATE",
+      "confidence": 0.93,
+      "reason": "Both are Daring Fireball commentary on Anthropic embedding watermark-like provenance clues in Claude-generated text, with no clear distinct event or angle indicated."
+    },
+    {
+      "a": {
+        "id": "60e69d17ffac84bac3ea",
+        "source": "parool_amsterdam",
+        "title": "Overleden man gevonden in water bij Westelijke Merwedekanaaldijk in Amsterdam-Oost",
+        "published_at": 1786116129000
+      },
+      "b": {
+        "id": "b8c950a93dd58e6003a0",
+        "source": "parool_amsterdam",
+        "title": "Wateren rond Amsterdam dreigen te verzilten: waterschap neemt extra maatregelen",
+        "published_at": 1786378860000
+      },
+      "embedding_similarity": 0.6107,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "The first article reports a dead man found in Amsterdam water, while the second concerns salinization risks and water-management measures."
+    },
+    {
+      "a": {
+        "id": "10d9afa9b978a45e9240",
+        "source": "rock_paper_shotgun",
+        "title": "O EMPIRE! WARD OFF THY ROT puts you in an abandoned, dithered world with a cursed object and asks you to do one thing: survive the journey",
+        "published_at": 1786826204000
+      },
+      "b": {
+        "id": "5e3995652a059e467a48",
+        "source": "rock_paper_shotgun",
+        "title": "Trainwatch is a life sim, a horror game, and a time management experience rolled up into a haunting story about the eerie places you see from a speeding carriage",
+        "published_at": 1787066659000
+      },
+      "embedding_similarity": 0.6062,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "The articles cover different games and distinct premises, with no meaningful connection beyond both being game coverage."
+    },
+    {
+      "a": {
+        "id": "5613cb4bfcbb795c0d95",
+        "source": "rock_paper_shotgun",
+        "title": "The Steam Frame needs to be more than a cool device if Valve want to reshape the VR market",
+        "published_at": 1786553046000
+      },
+      "b": {
+        "id": "bbedec33ab694bf920e1",
+        "source": "rock_paper_shotgun",
+        "title": "\"The world's becoming so bleak\": How Soulframe hopes to escape Warframe's shadow, with a little insight from Elden Ring",
+        "published_at": 1786547852000
+      },
+      "embedding_similarity": 0.6037,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "The articles cover different subjects: the future of VR hardware and the development of the fantasy RPG Soulframe."
+    },
+    {
+      "a": {
+        "id": "031c7dea0f245d59b4e4",
+        "source": "rock_paper_shotgun",
+        "title": "STALKER 2 gets serious performance and visual upgrades with its 2.0 update, testing confirms, polishing up one of the biggest flawed gems in FPS games",
+        "published_at": 1787146200000
+      },
+      "b": {
+        "id": "fb2cdb53c83f8d463ea1",
+        "source": "rock_paper_shotgun",
+        "title": "Amid accusations of a post-beta difficulty bump, Mortal Shell 2 devs patch the new soulslike to stop players riposting so hard they steal enemy weapons",
+        "published_at": 1787149006000
+      },
+      "embedding_similarity": 0.6026,
+      "label": "UNRELATED",
+      "confidence": 1,
+      "reason": "The articles cover unrelated patch updates for two different video games, STALKER 2 and Mortal Shell 2."
+    },
+    {
+      "a": {
+        "id": "32e8dfe86c5b291e6275",
+        "source": "nos_binnenland",
+        "title": "Mediaminister Letschert wacht oordeel rechter over boetes voor media af",
+        "published_at": 1787071138000
+      },
+      "b": {
+        "id": "b0fcee2e74c46c850e69",
+        "source": "dutchnews",
+        "title": "Dutch media attack “chilling” fines for slimming drugs coverage",
+        "published_at": 1787127453000
+      },
+      "embedding_similarity": 0.6014,
+      "label": "SAME_STORY_DIFFERENT_PERSPECTIVE",
+      "confidence": 0.88,
+      "reason": "Both cover the fines against Dutch media over slimming-drug reporting, but one focuses on the minister awaiting judicial review while the other emphasizes the media industry's criticism and chilling-e"
+    },
+    {
+      "a": {
+        "id": "3bd3fc322fbe0ee7d386",
+        "source": "rock_paper_shotgun",
+        "title": "Death Stranding meets party-based tactical combat in open world RPG Fog'n'Silence, in which you lead twisted humans through the Afterlife",
+        "published_at": 1787045413000
+      },
+      "b": {
+        "id": "cf7f15c3bcdf2d483544",
+        "source": "rock_paper_shotgun",
+        "title": "Entropy, a deliciously miserable Final Fantasy-esque RPG where your party members can permanently die, is now out in early access",
+        "published_at": 1787076432000
+      },
+      "embedding_similarity": 0.5995,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "They cover different RPGs by different developers, with no shared specific story or event."
+    },
+    {
+      "a": {
+        "id": "adf91126fb3ded7975e2",
+        "source": "marginalian",
+        "title": "How to Read the Signal of Your Life",
+        "published_at": 1786837876000
+      },
+      "b": {
+        "id": "de53c03130cad9aff111",
+        "source": "marginalian",
+        "title": "The Ocean and the Meaning of Life",
+        "published_at": 1786811042000
+      },
+      "embedding_similarity": 0.596,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.96,
+      "reason": "Both are Marginalian reflections on finding meaning in nature and life, but they center on different experiences and source ideas."
+    },
+    {
+      "a": {
+        "id": "082859244cd79c5a5b05",
+        "source": "daring_fireball",
+        "title": "Mark Zuckerberg Posts 6,500-Word AI Essay",
+        "published_at": 1786476996000
+      },
+      "b": {
+        "id": "daeaeb33304ebf0bc224",
+        "source": "daring_fireball",
+        "title": "Anthropic Posts ‘How Claude Marks AI-Generated Content’ Without Explaining How Claude Marks AI-Generated Content",
+        "published_at": 1786471162000
+      },
+      "embedding_similarity": 0.593,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.98,
+      "reason": "Both concern AI-related posts from major technology companies, but they cover separate essays and announcements by Meta and Anthropic."
+    },
+    {
+      "a": {
+        "id": "350e64f56e3da392616e",
+        "source": "simon_willison",
+        "title": "alchemy-utils 0.1a1",
+        "published_at": 1786590197000
+      },
+      "b": {
+        "id": "5955d3bcbd48a0393b83",
+        "source": "simon_willison",
+        "title": "sqlite-utils 4.2",
+        "published_at": 1786651889000
+      },
+      "embedding_similarity": 0.5907,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.99,
+      "reason": "Both are Simon Willison software release announcements, but they concern different packages and distinct feature updates."
+    },
+    {
+      "a": {
+        "id": "10d9afa9b978a45e9240",
+        "source": "rock_paper_shotgun",
+        "title": "O EMPIRE! WARD OFF THY ROT puts you in an abandoned, dithered world with a cursed object and asks you to do one thing: survive the journey",
+        "published_at": 1786826204000
+      },
+      "b": {
+        "id": "cf7f15c3bcdf2d483544",
+        "source": "rock_paper_shotgun",
+        "title": "Entropy, a deliciously miserable Final Fantasy-esque RPG where your party members can permanently die, is now out in early access",
+        "published_at": 1787076432000
+      },
+      "embedding_similarity": 0.5844,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "The articles cover different indie games with distinct premises, titles, and developers."
+    },
+    {
+      "a": {
+        "id": "8d4574960f1e1cd3059d",
+        "source": "bandcamp_daily",
+        "title": "Maya Ongaku, “Nothing Space Music”",
+        "published_at": 1786543207000
+      },
+      "b": {
+        "id": "93a0a3305032ce1ab937",
+        "source": "bandcamp_daily",
+        "title": "Uncovering Obscure Records",
+        "published_at": 1786730621000
+      },
+      "embedding_similarity": 0.5829,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "The articles cover different subjects: a Japanese trio's music versus obscure releases from Brian Eno's label."
+    },
+    {
+      "a": {
+        "id": "c6aa190accd4ca2604e5",
+        "source": "parool_amsterdam",
+        "title": "Agenten vinden gewonde man vlak bij politiebureau in Amsterdam-Oost",
+        "published_at": 1786541400000
+      },
+      "b": {
+        "id": "d71052bb345b39950e4d",
+        "source": "parool_amsterdam",
+        "title": "In Transvaalbuurt doodgestoken Jerry Texel (54) kwam op voor een vriend na ruzie bij café aan Krugerplein",
+        "published_at": 1786454340000
+      },
+      "embedding_similarity": 0.582,
+      "label": "SAME_STORY_DIFFERENT_PERSPECTIVE",
+      "confidence": 0.86,
+      "reason": "Both concern the same stabbing victim near the Amsterdam-Oost police station, while the second identifies him and adds the circumstances and motive surrounding the incident."
+    },
+    {
+      "a": {
+        "id": "00a745dd56a0af8af32b",
+        "source": "kottke",
+        "title": "Temperature Zero for Culture: Why Everything Is Starting...",
+        "published_at": 1786547940000
+      },
+      "b": {
+        "id": "3d6f5acf134b02df2047",
+        "source": "kottke",
+        "title": "“An Absolute Climate Catastrophe”",
+        "published_at": 1786457460000
+      },
+      "embedding_similarity": 0.5795,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.93,
+      "reason": "Both concern climate or cultural climate themes, but the titles indicate distinct articles without evidence of covering the same specific story."
+    },
+    {
+      "a": {
+        "id": "bc6f8b6566c0472dd68c",
+        "source": "daring_fireball",
+        "title": "Disney’s ABC Sues Trump’s FCC Over Challenge to Its Broadcast License",
+        "published_at": 1787092780000
+      },
+      "b": {
+        "id": "c624980708a3bdef98e3",
+        "source": "daring_fireball",
+        "title": "Apple Gives Legal Middle Finger to DOJ Challenge on Apple’s July Discovery Win",
+        "published_at": 1787091825000
+      },
+      "embedding_similarity": 0.5781,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "The articles concern separate legal disputes involving Disney/ABC and Apple, with no meaningful shared story."
+    },
+    {
+      "a": {
+        "id": "4511d33ac4cc66644fb5",
+        "source": "rock_paper_shotgun",
+        "title": "As Peak gets its final big update, developers Landfall and Aggro Crab explain why it isn't a \"forever game\"",
+        "published_at": 1786485278000
+      },
+      "b": {
+        "id": "b9c5b4f0aaa4444f516a",
+        "source": "rock_paper_shotgun",
+        "title": "\"We're not really sure what Big Walk's future looks like,\" say the waddling co-op puzzler's devs, though it probably doesn’t involve DLC",
+        "published_at": 1786620660000
+      },
+      "embedding_similarity": 0.577,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "These articles cover different games and separate developer discussions about their respective futures."
+    },
+    {
+      "a": {
+        "id": "15e5e620ad3e06344079",
+        "source": "parool_amsterdam",
+        "title": "Veiligheidsrisicogebied in enkele buurten Amsterdam-Zuidoost vanwege toename geweldsincidenten",
+        "published_at": 1786978080000
+      },
+      "b": {
+        "id": "99ae6baa451be2f6a37e",
+        "source": "parool_amsterdam",
+        "title": "Sarphatistraat is een ‘crackstrip’ geworden, zeggen buurtbewoners: ‘Daklozen slapen weken in tentjes en niemand doet iets’",
+        "published_at": 1786928400000
+      },
+      "embedding_similarity": 0.5756,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.97,
+      "reason": "Beide gaan over veiligheidsproblemen in Amsterdam, maar het ene betreft aangewezen risicogebieden in Zuidoost en het andere overlast en dakloosheid op de Sarphatistraat."
+    },
+    {
+      "a": {
+        "id": "10d9afa9b978a45e9240",
+        "source": "rock_paper_shotgun",
+        "title": "O EMPIRE! WARD OFF THY ROT puts you in an abandoned, dithered world with a cursed object and asks you to do one thing: survive the journey",
+        "published_at": 1786826204000
+      },
+      "b": {
+        "id": "d1e5bd50b61f5f66fc5b",
+        "source": "rock_paper_shotgun",
+        "title": "All Haul The King is a co-op comedy corpse-dragging simulator from the makers of Eclipsium, one of 2025's best horror games",
+        "published_at": 1786527797000
+      },
+      "embedding_similarity": 0.5745,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.98,
+      "reason": "Both are Rock Paper Shotgun previews of quirky horror-themed indie games, but they concern entirely different games and premises."
+    },
+    {
+      "a": {
+        "id": "59ce65a6d47f210c5c97",
+        "source": "game_developer",
+        "title": "Inner Pocket is a new indie publisher looking to champion 'curiosity games'",
+        "published_at": 1786976146000
+      },
+      "b": {
+        "id": "8a87a6bbb85deb52169c",
+        "source": "game_developer",
+        "title": "WINGS really, really wants to fund your neat indie video game",
+        "published_at": 1787040049000
+      },
+      "embedding_similarity": 0.5742,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.98,
+      "reason": "Both concern new indie game funding or publishing initiatives, but they describe distinct organizations with different missions."
+    },
+    {
+      "a": {
+        "id": "dc7e8b1c13894f42310b",
+        "source": "parool_amsterdam",
+        "title": "‘Deze man is geen boef, constateer ik, maar een hosselaar die wil overleven’",
+        "published_at": 1787151645000
+      },
+      "b": {
+        "id": "ddd23826d1c8fcdc3deb",
+        "source": "parool_amsterdam",
+        "title": "Deze studenten komen rond van 414, 2000 en 824 euro per maand: ‘Uit huis gaan betekent dat ik meer moet werken’",
+        "published_at": 1787014800000
+      },
+      "embedding_similarity": 0.5724,
+      "label": "UNRELATED",
+      "confidence": 0.98,
+      "reason": "The articles concern different subjects: a profile or interview with a hustler versus students discussing their monthly finances."
+    },
+    {
+      "a": {
+        "id": "03c3b43af220531d4516",
+        "source": "daring_fireball",
+        "title": "Google Design Pisses Its Pants on Twitter/X",
+        "published_at": 1786583025000
+      },
+      "b": {
+        "id": "e7793a334fa6f1b86b99",
+        "source": "daring_fireball",
+        "title": "Google Introduces ‘Camera Looks’ With Pixel 11 Phones",
+        "published_at": 1786568295000
+      },
+      "embedding_similarity": 0.5717,
+      "label": "SAME_STORY_DIFFERENT_PERSPECTIVE",
+      "confidence": 0.97,
+      "reason": "Both concern Google's Pixel 11 camera-look feature, but the first is commentary criticizing its design or presentation while the second reports the product introduction."
+    },
+    {
+      "a": {
+        "id": "3bd3fc322fbe0ee7d386",
+        "source": "rock_paper_shotgun",
+        "title": "Death Stranding meets party-based tactical combat in open world RPG Fog'n'Silence, in which you lead twisted humans through the Afterlife",
+        "published_at": 1787045413000
+      },
+      "b": {
+        "id": "92782bb2385c9c2419c4",
+        "source": "rock_paper_shotgun",
+        "title": "\"Through the looking glass\": as Arkane fight for their future, Dishonored veteran Harvey Smith reveals new studio dedicated to immersive sims",
+        "published_at": 1787144400000
+      },
+      "embedding_similarity": 0.5709,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "The articles cover entirely different game projects and developers with no meaningful connection."
+    },
+    {
+      "a": {
+        "id": "a39ba8c393d69c1c6cbb",
+        "source": "parool_amsterdam",
+        "title": "Stagiair gezocht voor team social",
+        "published_at": 1787152020000
+      },
+      "b": {
+        "id": "ddd23826d1c8fcdc3deb",
+        "source": "parool_amsterdam",
+        "title": "Deze studenten komen rond van 414, 2000 en 824 euro per maand: ‘Uit huis gaan betekent dat ik meer moet werken’",
+        "published_at": 1787014800000
+      },
+      "embedding_similarity": 0.569,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "The first article is a social-media internship vacancy, while the second profiles students' monthly finances and living costs."
+    },
+    {
+      "a": {
+        "id": "5e432ce5627858ef0f2c",
+        "source": "simon_willison",
+        "title": "alchemy-utils 0.1a0",
+        "published_at": 1786564290000
+      },
+      "b": {
+        "id": "abe6fe69d4e4e6e549b9",
+        "source": "simon_willison",
+        "title": "datasette-upload-dbs 0.5a0",
+        "published_at": 1786480513000
+      },
+      "embedding_similarity": 0.5675,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.98,
+      "reason": "Both concern Simon Willison's database/Datasette tooling, but they are separate releases for different projects and functionality."
+    },
+    {
+      "a": {
+        "id": "1e9b2889835395f9a2f3",
+        "source": "aftermath",
+        "title": "Vibes Around GTA VI Continue To Be Rancid As Gameplay Footage Leaks And Fired Devs Ask Fans Not To Boycott",
+        "published_at": 1787094117000
+      },
+      "b": {
+        "id": "5ebac54044728a3d06cf",
+        "source": "rock_paper_shotgun",
+        "title": "Rather than calling for GTA 6 boycott, fired Rockstar workers urge players to support them in their legal battle against the studio by buying union merch",
+        "published_at": 1787055646000
+      },
+      "embedding_similarity": 0.5661,
+      "label": "SAME_STORY_DIFFERENT_PERSPECTIVE",
+      "confidence": 0.96,
+      "reason": "Both cover fired Rockstar developers' response around the GTA VI leak and boycott issue, but Article 2 adds the distinct angle of supporting their legal battle through union merchandise."
+    },
+    {
+      "a": {
+        "id": "99ae6baa451be2f6a37e",
+        "source": "parool_amsterdam",
+        "title": "Sarphatistraat is een ‘crackstrip’ geworden, zeggen buurtbewoners: ‘Daklozen slapen weken in tentjes en niemand doet iets’",
+        "published_at": 1786928400000
+      },
+      "b": {
+        "id": "c566074fad7a7219a8ef",
+        "source": "parool_amsterdam",
+        "title": "Bouwfouten in gloednieuw Brasa Village, in Amsterdam-Zuidoost, leggen problemen met flexwoningen bloot: ‘Temperatuur daalde binnen tot 11 graden’",
+        "published_at": 1786755600000
+      },
+      "embedding_similarity": 0.5648,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "The articles concern separate Amsterdam issues: drug-related homelessness on Sarphatistraat versus construction defects in flex homes at Brasa Village."
+    },
+    {
+      "a": {
+        "id": "2baabf8c8db6e4c77866",
+        "source": "parool_amsterdam",
+        "title": "Ondernemer Bart van Olphen (Fish Tales) groeide deels op in ‘het deftigere deel’ van Amsterdam-Zuid: ‘Ik hou meer van het stadse, het authentieke’",
+        "published_at": 1786150800000
+      },
+      "b": {
+        "id": "77a4b33c72a76bad5ccb",
+        "source": "parool_amsterdam",
+        "title": "Wim Bouman runt al 29 jaar een B&B in het centrum van Amsterdam: ‘Een stel weigerde uit te checken, terwijl de nieuwe gasten al op de stoep stonden’",
+        "published_at": 1786460400000
+      },
+      "embedding_similarity": 0.5641,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.99,
+      "reason": "Both are Amsterdam-based human-interest profiles, but they concern different people and distinct life or business stories."
+    },
+    {
+      "a": {
+        "id": "ac2204c5a4b6ff0da60e",
+        "source": "parool_amsterdam",
+        "title": "Bij Bar Kaat in Amsterdam-West vind je echte Limburgse gastvrijheid: ‘Je krijgt nootjes en mag gewoon een glas water voor je besteld hebt’",
+        "published_at": 1787014800000
+      },
+      "b": {
+        "id": "dc7e8b1c13894f42310b",
+        "source": "parool_amsterdam",
+        "title": "‘Deze man is geen boef, constateer ik, maar een hosselaar die wil overleven’",
+        "published_at": 1787151645000
+      },
+      "embedding_similarity": 0.5636,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "The articles concern entirely different subjects: a hospitality venue in Amsterdam-West versus a characterization of a man as a hustler trying to survive."
+    },
+    {
+      "a": {
+        "id": "a49967a21ce58c93a7ee",
+        "source": "parool_amsterdam",
+        "title": "Woning in Oost dicht na prostitutie, verkrachting en wietplantage met 191 planten",
+        "published_at": 1786701300000
+      },
+      "b": {
+        "id": "c566074fad7a7219a8ef",
+        "source": "parool_amsterdam",
+        "title": "Bouwfouten in gloednieuw Brasa Village, in Amsterdam-Zuidoost, leggen problemen met flexwoningen bloot: ‘Temperatuur daalde binnen tot 11 graden’",
+        "published_at": 1786755600000
+      },
+      "embedding_similarity": 0.563,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "The articles concern different Amsterdam housing incidents: a closed home linked to prostitution and crime versus construction defects in new flexible housing."
+    },
+    {
+      "a": {
+        "id": "159f0b90763a424da4f9",
+        "source": "latent_space",
+        "title": "[AINews] Zawinski's Law of MultiAgents",
+        "published_at": 1786151527000
+      },
+      "b": {
+        "id": "fca7c697e8bef2cadf17",
+        "source": "latent_space",
+        "title": "[AINews] AMD buys Taalas",
+        "published_at": 1786079626000
+      },
+      "embedding_similarity": 0.5622,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "The articles have different titles and summaries, covering general multi-agent themes versus AMD's acquisition of Taalas."
+    },
+    {
+      "a": {
+        "id": "571ba421cfa41543e6ba",
+        "source": "rock_paper_shotgun",
+        "title": "\"Without us, Bethesda games aren’t Bethesda games\": Rallies against Microsoft layoffs at Elder Scrolls studio continue, with unionised devs' morale \"on the upswing\"",
+        "published_at": 1787139000000
+      },
+      "b": {
+        "id": "5ebac54044728a3d06cf",
+        "source": "rock_paper_shotgun",
+        "title": "Rather than calling for GTA 6 boycott, fired Rockstar workers urge players to support them in their legal battle against the studio by buying union merch",
+        "published_at": 1787055646000
+      },
+      "embedding_similarity": 0.561,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.98,
+      "reason": "Both concern labor organizing and layoffs in major game studios, but they cover separate disputes involving Bethesda/Microsoft and Rockstar."
+    },
+    {
+      "a": {
+        "id": "3bbba9c1ccf5bd650b53",
+        "source": "daring_fireball",
+        "title": "Joanna Stern on the Pixel 11 ‘HiLight’ Notification Light",
+        "published_at": 1786569810000
+      },
+      "b": {
+        "id": "6e4728cb74f5f8709505",
+        "source": "daring_fireball",
+        "title": "Hands-On With Google Pixel 11 Pro Fold",
+        "published_at": 1786563651000
+      },
+      "embedding_similarity": 0.5598,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.98,
+      "reason": "Both concern the Pixel 11, but one discusses a notification-light feature while the other covers hands-on impressions of the Pro Fold."
+    },
+    {
+      "a": {
+        "id": "4511d33ac4cc66644fb5",
+        "source": "rock_paper_shotgun",
+        "title": "As Peak gets its final big update, developers Landfall and Aggro Crab explain why it isn't a \"forever game\"",
+        "published_at": 1786485278000
+      },
+      "b": {
+        "id": "d1e5bd50b61f5f66fc5b",
+        "source": "rock_paper_shotgun",
+        "title": "All Haul The King is a co-op comedy corpse-dragging simulator from the makers of Eclipsium, one of 2025's best horror games",
+        "published_at": 1786527797000
+      },
+      "embedding_similarity": 0.558,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "They cover entirely different video games: Peak's final update versus a new co-op corpse-dragging simulator."
+    },
+    {
+      "a": {
+        "id": "d8fc77e1ee870558feb5",
+        "source": "daring_fireball",
+        "title": "‘The Problem With Vibe-Coded Flattery’",
+        "published_at": 1786380121000
+      },
+      "b": {
+        "id": "fc1935a68279c5519a82",
+        "source": "daring_fireball",
+        "title": "The Talk Show: ‘Getting the Snack Right’",
+        "published_at": 1786474800000
+      },
+      "embedding_similarity": 0.5564,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "The articles have different titles and apparently concern unrelated subjects."
+    },
+    {
+      "a": {
+        "id": "3127a3cc4e999cd7885f",
+        "source": "daring_fireball",
+        "title": "The NYT and WSJ on Apple, China, and the RAM Crisis",
+        "published_at": 1786375289000
+      },
+      "b": {
+        "id": "e17affae02d73ca8e77b",
+        "source": "daring_fireball",
+        "title": "The Economist: ‘How to Spot AI Writing’",
+        "published_at": 1786484226000
+      },
+      "embedding_similarity": 0.5496,
+      "label": "UNRELATED",
+      "confidence": 1,
+      "reason": "The articles address entirely different topics: Apple and China-related RAM issues versus identifying AI-generated writing."
+    },
+    {
+      "a": {
+        "id": "5c6c8308ffcd7e74f346",
+        "source": "rock_paper_shotgun",
+        "title": "Ron Gilbert talks the untraditional way he got Thimbleweed Park 2 funded, and his frustrations with modern publishing deals",
+        "published_at": 1786830763000
+      },
+      "b": {
+        "id": "b9c5b4f0aaa4444f516a",
+        "source": "rock_paper_shotgun",
+        "title": "\"We're not really sure what Big Walk's future looks like,\" say the waddling co-op puzzler's devs, though it probably doesn’t involve DLC",
+        "published_at": 1786620660000
+      },
+      "embedding_similarity": 0.5423,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "The articles cover different games and unrelated developer topics: Thimbleweed Park 2 funding versus Big Walk's future."
+    },
+    {
+      "a": {
+        "id": "50e486e231684715594a",
+        "source": "latent_space",
+        "title": "[AINews] Gemini 3.7 Flash brings GDM back to the forefront",
+        "published_at": 1786685439000
+      },
+      "b": {
+        "id": "f5f5798b8cd1f434077f",
+        "source": "latent_space",
+        "title": "[AINews] Cursor's $60B acquisition by SpaceXai closes",
+        "published_at": 1786688160000
+      },
+      "embedding_similarity": 0.5361,
+      "label": "UNRELATED",
+      "confidence": 1,
+      "reason": "The articles concern entirely different AI news items: Gemini 3.7 Flash and Cursor's acquisition by SpaceXai."
+    },
+    {
+      "a": {
+        "id": "1d45690c8c2527a9e97c",
+        "source": "parool_amsterdam",
+        "title": "Waarom het Vondelpark amper last heeft van muggen, maar jouw balkon juist wel: ‘We hebben een steekmuggenparadijs geschapen’",
+        "published_at": 1787055300000
+      },
+      "b": {
+        "id": "63d813a0c340cc5b4888",
+        "source": "parool_amsterdam",
+        "title": "Krakers in miljoenenvilla aan de Amsteldijk mogen blijven van de rechter, maar moeten zich wel ‘behoorlijk’ gedragen",
+        "published_at": 1787066340000
+      },
+      "embedding_similarity": 0.5314,
+      "label": "UNRELATED",
+      "confidence": 1,
+      "reason": "The articles concern entirely different subjects: mosquito prevalence in Amsterdam’s Vondelpark versus squatters in a luxury villa."
+    },
+    {
+      "a": {
+        "id": "15e5e620ad3e06344079",
+        "source": "parool_amsterdam",
+        "title": "Veiligheidsrisicogebied in enkele buurten Amsterdam-Zuidoost vanwege toename geweldsincidenten",
+        "published_at": 1786978080000
+      },
+      "b": {
+        "id": "c566074fad7a7219a8ef",
+        "source": "parool_amsterdam",
+        "title": "Bouwfouten in gloednieuw Brasa Village, in Amsterdam-Zuidoost, leggen problemen met flexwoningen bloot: ‘Temperatuur daalde binnen tot 11 graden’",
+        "published_at": 1786755600000
+      },
+      "embedding_similarity": 0.526,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.99,
+      "reason": "Both concern Amsterdam-Zuidoost, but one reports a security-risk designation due to violence while the other investigates construction defects in new flex homes."
+    },
+    {
+      "a": {
+        "id": "449a6646b19c5a83e64b",
+        "source": "parool_amsterdam",
+        "title": "Lerarentekort blijft slinken in Amsterdam, maar zorgen nog niet verdwenen",
+        "published_at": 1787157863000
+      },
+      "b": {
+        "id": "f475637b4d321881500d",
+        "source": "parool_amsterdam",
+        "title": "Ymere gaat twintig time-outwoningen voor kwetsbare huurders realiseren",
+        "published_at": 1787135318000
+      },
+      "embedding_similarity": 0.5199,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "The articles concern different issues: Amsterdam's teacher shortage versus Ymere's planned temporary housing for vulnerable tenants."
+    },
+    {
+      "a": {
+        "id": "0bef42b45ac74250611e",
+        "source": "bandcamp_daily",
+        "title": "Sweeping Promises Pick Their Bandcamp Favorites",
+        "published_at": 1786543216000
+      },
+      "b": {
+        "id": "c85765b648f24be05437",
+        "source": "bandcamp_daily",
+        "title": "HULDER, “Verbolgen”",
+        "published_at": 1786368778000
+      },
+      "embedding_similarity": 0.516,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "One article features Sweeping Promises' music recommendations, while the other reviews or spotlights Hulder's new metal LP."
+    },
+    {
+      "a": {
+        "id": "92782bb2385c9c2419c4",
+        "source": "rock_paper_shotgun",
+        "title": "\"Through the looking glass\": as Arkane fight for their future, Dishonored veteran Harvey Smith reveals new studio dedicated to immersive sims",
+        "published_at": 1787144400000
+      },
+      "b": {
+        "id": "fb2cdb53c83f8d463ea1",
+        "source": "rock_paper_shotgun",
+        "title": "Amid accusations of a post-beta difficulty bump, Mortal Shell 2 devs patch the new soulslike to stop players riposting so hard they steal enemy weapons",
+        "published_at": 1787149006000
+      },
+      "embedding_similarity": 0.5111,
+      "label": "UNRELATED",
+      "confidence": 1,
+      "reason": "The articles cover different game-development stories involving separate studios and games."
+    },
+    {
+      "a": {
+        "id": "71b5a9c0f5361c1bcce4",
+        "source": "kottke",
+        "title": "A recently unearthed conversation with Anthony Bourdain...",
+        "published_at": 1786643220000
+      },
+      "b": {
+        "id": "c342ec1dd77918874ec7",
+        "source": "kottke",
+        "title": "Two new episodes of Ric Burns’ 1999 documentary...",
+        "published_at": 1786975020000
+      },
+      "embedding_similarity": 0.5055,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "The articles concern different subjects: an unearthed Anthony Bourdain conversation versus new episodes of a Ric Burns documentary."
+    },
+    {
+      "a": {
+        "id": "cfd8fb984dff35661726",
+        "source": "simon_willison",
+        "title": "Introducing Muse Glimmer",
+        "published_at": 1786406163000
+      },
+      "b": {
+        "id": "f0d8a6137d5172aa3b07",
+        "source": "simon_willison",
+        "title": "llm-gemini 0.33",
+        "published_at": 1786649854000
+      },
+      "embedding_similarity": 0.5003,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "One article introduces Meta's Muse Glimmer model, while the other announces updates to a Gemini plugin and model support."
+    },
+    {
+      "a": {
+        "id": "c624980708a3bdef98e3",
+        "source": "daring_fireball",
+        "title": "Apple Gives Legal Middle Finger to DOJ Challenge on Apple’s July Discovery Win",
+        "published_at": 1787091825000
+      },
+      "b": {
+        "id": "d41bff77b5531297c295",
+        "source": "daring_fireball",
+        "title": "‘Dickover’ Makes It Into The Guardian",
+        "published_at": 1787069012000
+      },
+      "embedding_similarity": 0.4965,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "The articles concern entirely different subjects: Apple's legal dispute with the DOJ versus a term being mentioned in The Guardian."
+    },
+    {
+      "a": {
+        "id": "50061626b9d533f2471d",
+        "source": "parool_amsterdam",
+        "title": "Een poging tot verkrachting, een verkrachting op de Weesperzijde – en toen werd Lisa (17) vermoord. Een reconstructie van het onderzoek",
+        "published_at": 1787101200000
+      },
+      "b": {
+        "id": "653fcda3a6b9523a177a",
+        "source": "nos_binnenland",
+        "title": "Man die verdacht wordt van voorbereiden aanslag op Amalia en Alexia vrijgelaten",
+        "published_at": 1787053236000
+      },
+      "embedding_similarity": 0.4919,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "The articles concern entirely different criminal cases: a murder investigation versus a suspect in an alleged plot against Dutch princesses."
+    },
+    {
+      "a": {
+        "id": "5e4739e49a946207c91e",
+        "source": "rock_paper_shotgun",
+        "title": "Amiga strategy classic Defender of the Crown is back with both old and fresh graphics, and an all new roguelite mode",
+        "published_at": 1786641023000
+      },
+      "b": {
+        "id": "d1e5bd50b61f5f66fc5b",
+        "source": "rock_paper_shotgun",
+        "title": "All Haul The King is a co-op comedy corpse-dragging simulator from the makers of Eclipsium, one of 2025's best horror games",
+        "published_at": 1786527797000
+      },
+      "embedding_similarity": 0.4882,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "These articles cover entirely different games and stories, with no meaningful connection beyond being video-game coverage."
+    },
+    {
+      "a": {
+        "id": "9433dad707d3b8752790",
+        "source": "stereogum",
+        "title": "World News Announce Debut Album In Purgatory: Hear “The Way It Goes”",
+        "published_at": 1787154155000
+      },
+      "b": {
+        "id": "b3fb0d71cce0ece32cd4",
+        "source": "stereogum",
+        "title": "How Strange It Is – “Tough Luck”",
+        "published_at": 1787076375000
+      },
+      "embedding_similarity": 0.4849,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "The articles cover different bands, songs, albums, and release stories."
+    },
+    {
+      "a": {
+        "id": "3f9d2165906a3881f766",
+        "source": "pragmatic_engineer",
+        "title": "From Chrome DevTools to AI Engineering, with Addy Osmani",
+        "published_at": 1787158437000
+      },
+      "b": {
+        "id": "c717848f851d9b1eb8eb",
+        "source": "pragmatic_engineer",
+        "title": "Headed for the Exit: the Great Engineering Leader Career Break",
+        "published_at": 1787070066000
+      },
+      "embedding_similarity": 0.4812,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.98,
+      "reason": "Both discuss AI's impact on software engineering careers, but one is an interview about engineering practice and the other examines leaders taking career breaks."
+    },
+    {
+      "a": {
+        "id": "1820290509e35bb6c805",
+        "source": "game_developer",
+        "title": "Scabby versus Sharma, Twitch's GenAI admission, and Netflix shutters more studios - Patch Notes #65",
+        "published_at": 1786704703000
+      },
+      "b": {
+        "id": "e485b905cc064fa7289a",
+        "source": "game_developer",
+        "title": "Supermassive Games begins third round of layoffs in three years",
+        "published_at": 1786454947000
+      },
+      "embedding_similarity": 0.477,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.98,
+      "reason": "Both concern the games industry and studio developments, but they cover different specific stories: a roundup versus Supermassive Games layoffs."
+    },
+    {
+      "a": {
+        "id": "1820290509e35bb6c805",
+        "source": "game_developer",
+        "title": "Scabby versus Sharma, Twitch's GenAI admission, and Netflix shutters more studios - Patch Notes #65",
+        "published_at": 1786704703000
+      },
+      "b": {
+        "id": "5ee9c385f747bd90aaf2",
+        "source": "pragmatic_engineer",
+        "title": "The Pulse: Meta’s self-inflicted resignation-wave",
+        "published_at": 1786726555000
+      },
+      "embedding_similarity": 0.4745,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "The articles cover different news roundups, with one focused on games and Netflix studios and the other on Meta employee departures and AI agents."
+    },
+    {
+      "a": {
+        "id": "e17affae02d73ca8e77b",
+        "source": "daring_fireball",
+        "title": "The Economist: ‘How to Spot AI Writing’",
+        "published_at": 1786484226000
+      },
+      "b": {
+        "id": "e4aaaa70bc863201638a",
+        "source": "noema",
+        "title": "AI Needs Public Feedback At Scale Before It’s Too Late",
+        "published_at": 1786720306000
+      },
+      "embedding_similarity": 0.4716,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.93,
+      "reason": "Both concern AI and public understanding or governance, but they address different specific stories: detecting AI writing versus gathering large-scale public feedback."
+    },
+    {
+      "a": {
+        "id": "65c4aa14fae55a0e0128",
+        "source": "bandcamp_daily",
+        "title": "Prog Is a State of Mind #3",
+        "published_at": 1786989315000
+      },
+      "b": {
+        "id": "b66b69daf6815b24e8b7",
+        "source": "bandcamp_daily",
+        "title": "Open Mike Eagle & Kenny Segal, “DOOMED!”",
+        "published_at": 1787147760000
+      },
+      "embedding_similarity": 0.4689,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "The articles cover different music subjects: a retrospective on Yes and a review of Open Mike Eagle and Kenny Segal’s record."
+    },
+    {
+      "a": {
+        "id": "747cf5ed359eb2da755d",
+        "source": "nos_binnenland",
+        "title": "Genetisch gemodificeerde gewassen straks makkelijker op ons bord",
+        "published_at": 1787115602000
+      },
+      "b": {
+        "id": "9bd62703b95f3c134761",
+        "source": "dutchnews",
+        "title": "Dutch shops to stock more GM food after EU relaxes rules in 2028",
+        "published_at": 1787131330000
+      },
+      "embedding_similarity": 0.4658,
+      "label": "RELATED_TOPIC_DIFFERENT_STORY",
+      "confidence": 0.91,
+      "reason": "Both concern GM crops in the Netherlands, but one covers a potato field trial while the other reports future EU regulatory changes and retail availability."
+    },
+    {
+      "a": {
+        "id": "29f677752d347aa79f73",
+        "source": "marginalian",
+        "title": "How Humanity Saved the Ginkgo",
+        "published_at": 1786657223000
+      },
+      "b": {
+        "id": "51e09d1bf0a6d8835e70",
+        "source": "marginalian",
+        "title": "Constellating Wonder: Celebrating 20 Years of The Marginalian (October 23, 2026)",
+        "published_at": 1786723996000
+      },
+      "embedding_similarity": 0.4632,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "One article explores the history and survival of ginkgo trees, while the other commemorates The Marginalian's founding and evolution."
+    },
+    {
+      "a": {
+        "id": "4bf183de6331b4f31ff0",
+        "source": "simon_willison",
+        "title": "GitHub Models is now retired",
+        "published_at": 1786315685000
+      },
+      "b": {
+        "id": "b7ddd31a16bcbfd59fa8",
+        "source": "simon_willison",
+        "title": "Now we have a timeline of the OpenAI accidental attack against Hugging Face",
+        "published_at": 1786198001000
+      },
+      "embedding_similarity": 0.4608,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "The articles concern entirely different events: GitHub Models being retired versus an OpenAI incident involving Hugging Face."
+    },
+    {
+      "a": {
+        "id": "3fdbed26da7ea0768748",
+        "source": "bandcamp_daily",
+        "title": "Cuba’s DIY Scene Endures in the Face of Constant Crackdowns",
+        "published_at": 1786629201000
+      },
+      "b": {
+        "id": "8d4574960f1e1cd3059d",
+        "source": "bandcamp_daily",
+        "title": "Maya Ongaku, “Nothing Space Music”",
+        "published_at": 1786543207000
+      },
+      "embedding_similarity": 0.4579,
+      "label": "UNRELATED",
+      "confidence": 1,
+      "reason": "The articles cover different subjects: Cuba’s underground music scene and a Japanese trio’s ambient pop music."
+    },
+    {
+      "a": {
+        "id": "0c1345151d21ad19f240",
+        "source": "rock_paper_shotgun",
+        "title": "Immortality developer Sam Barlow reveals Precognition, a sci-fi horror collaboration with Brandon Cronenberg about \"really terrible things that are just around the corner\"",
+        "published_at": 1786563000000
+      },
+      "b": {
+        "id": "b9c5b4f0aaa4444f516a",
+        "source": "rock_paper_shotgun",
+        "title": "\"We're not really sure what Big Walk's future looks like,\" say the waddling co-op puzzler's devs, though it probably doesn’t involve DLC",
+        "published_at": 1786620660000
+      },
+      "embedding_similarity": 0.4557,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "The articles cover entirely different video games and development stories."
+    },
+    {
+      "a": {
+        "id": "04824cd9f44c3a5d004a",
+        "source": "kottke",
+        "title": "Ozu in Color (Every Frame a Painting)",
+        "published_at": 1786978680000
+      },
+      "b": {
+        "id": "f0b3774c5a7c5bc1c0ec",
+        "source": "kottke",
+        "title": "Trailer for VisionQuest , the third leg of the...",
+        "published_at": 1787073900000
+      },
+      "embedding_similarity": 0.4532,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "The articles concern different subjects: a video essay about Ozu's use of color and a trailer for VisionQuest."
+    },
+    {
+      "a": {
+        "id": "9c8fb8c2419612e8ef69",
+        "source": "rock_paper_shotgun",
+        "title": "Rideshare Stimulator finally gets its genAI disclosure after much Saber-rattling, and it turns out the game also uses the tech for in-game music",
+        "published_at": 1786721190000
+      },
+      "b": {
+        "id": "c42e215f3c1bd0697cb0",
+        "source": "aftermath",
+        "title": "'Who’s Deciding The Fate Of This Game?' The Secretive Process Of Getting A Game With Sexual Content On Steam",
+        "published_at": 1786986440000
+      },
+      "embedding_similarity": 0.4498,
+      "label": "UNRELATED",
+      "confidence": 0.98,
+      "reason": "The articles concern different games and distinct issues: AI disclosure and workplace remarks versus Steam approval of sexual content."
+    },
+    {
+      "a": {
+        "id": "e72f7fe984986818e264",
+        "source": "daring_fireball",
+        "title": "★ Retraction: The App Store Rejection of the Week That Was, in Fact, a Correct Rejection",
+        "published_at": 1786245384000
+      },
+      "b": {
+        "id": "ff6405aaee6dd7280a53",
+        "source": "daring_fireball",
+        "title": "Amazon Is Spiting Customers With Unhelpful Order Confirmation Emails",
+        "published_at": 1786560661000
+      },
+      "embedding_similarity": 0.4337,
+      "label": "UNRELATED",
+      "confidence": 1,
+      "reason": "The articles address unrelated topics: an App Store astrology-app rejection and Amazon order-confirmation emails."
+    },
+    {
+      "a": {
+        "id": "2baabf8c8db6e4c77866",
+        "source": "parool_amsterdam",
+        "title": "Ondernemer Bart van Olphen (Fish Tales) groeide deels op in ‘het deftigere deel’ van Amsterdam-Zuid: ‘Ik hou meer van het stadse, het authentieke’",
+        "published_at": 1786150800000
+      },
+      "b": {
+        "id": "4848c362884d582dcdde",
+        "source": "parool_amsterdam",
+        "title": "Taakstraf en voorwaardelijke jeugddetentie voor veroorzaken explosie bij restaurant Caribbean Grill in Amsterdam-West",
+        "published_at": 1785949680000
+      },
+      "embedding_similarity": 0.4198,
+      "label": "UNRELATED",
+      "confidence": 1,
+      "reason": "The articles concern different subjects: an entrepreneur’s upbringing and preferences versus sentencing for a restaurant explosion."
+    },
+    {
+      "a": {
+        "id": "5613cb4bfcbb795c0d95",
+        "source": "rock_paper_shotgun",
+        "title": "The Steam Frame needs to be more than a cool device if Valve want to reshape the VR market",
+        "published_at": 1786553046000
+      },
+      "b": {
+        "id": "99839fd9e6516fa16b8a",
+        "source": "aftermath",
+        "title": "Netflix Closes Two More Game Studios, Expects Us To Believe It Still Sees ‘Opportunity’ In Games",
+        "published_at": 1786650518000
+      },
+      "embedding_similarity": 0.4083,
+      "label": "UNRELATED",
+      "confidence": 1,
+      "reason": "The articles discuss unrelated topics: Valve's Steam Frame VR device versus Netflix shutting down game studios."
+    },
+    {
+      "a": {
+        "id": "8eac0ed7cfa4d4c8bf09",
+        "source": "kottke",
+        "title": "Stories that the authors of the Bible borrowed from...",
+        "published_at": 1786541340000
+      },
+      "b": {
+        "id": "dc8a02837363461975c4",
+        "source": "kottke",
+        "title": "A Collection of Eclipse Glasses (1793-2019)",
+        "published_at": 1786543740000
+      },
+      "embedding_similarity": 0.3972,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "The articles cover unrelated subjects: biblical source borrowing and a collection of eclipse glasses."
+    },
+    {
+      "a": {
+        "id": "1f7a868f6609b913ab67",
+        "source": "game_developer",
+        "title": "Former Ubisoft Barcelona devs launch Dark Ritual Studios",
+        "published_at": 1786466419000
+      },
+      "b": {
+        "id": "57dc19d342144b7d0064",
+        "source": "game_developer",
+        "title": "Amazon to rescind its publisher role on Lost Ark and Throne and Liberty by early 2027",
+        "published_at": 1786552717000
+      },
+      "embedding_similarity": 0.3861,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "The articles cover unrelated business developments involving different game companies and projects."
+    },
+    {
+      "a": {
+        "id": "397c261e3814b6cb65ba",
+        "source": "game_developer",
+        "title": "Arco tops 100,000 sales in two years and breaks even",
+        "published_at": 1787045288000
+      },
+      "b": {
+        "id": "c42e215f3c1bd0697cb0",
+        "source": "aftermath",
+        "title": "'Who’s Deciding The Fate Of This Game?' The Secretive Process Of Getting A Game With Sexual Content On Steam",
+        "published_at": 1786986440000
+      },
+      "embedding_similarity": 0.3766,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "The first article reports Arco's sales milestone, while the second examines Steam's approval process for a different game involving sexual content."
+    },
+    {
+      "a": {
+        "id": "082859244cd79c5a5b05",
+        "source": "daring_fireball",
+        "title": "Mark Zuckerberg Posts 6,500-Word AI Essay",
+        "published_at": 1786476996000
+      },
+      "b": {
+        "id": "e7793a334fa6f1b86b99",
+        "source": "daring_fireball",
+        "title": "Google Introduces ‘Camera Looks’ With Pixel 11 Phones",
+        "published_at": 1786568295000
+      },
+      "embedding_similarity": 0.3688,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "The articles cover separate announcements about Zuckerberg's AI essay and Google's Pixel 11 camera features."
+    },
+    {
+      "a": {
+        "id": "1e54a25bac8f62b343de",
+        "source": "game_developer",
+        "title": "Triple-A vets and accessibility experts launch new game dev co-op: Raze and Rebuild Studio",
+        "published_at": 1787152157000
+      },
+      "b": {
+        "id": "55dece5fa502bc69ac07",
+        "source": "game_developer",
+        "title": "Deus Ex director Warren Spector is retiring after nearly 45 years in game dev",
+        "published_at": 1787073259000
+      },
+      "embedding_similarity": 0.3608,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "One article announces a new game development co-op, while the other covers Warren Spector's retirement."
+    },
+    {
+      "a": {
+        "id": "aef9f84bdd3cf1a19462",
+        "source": "404media",
+        "title": "Behind the Blog: Endless Scam Parade",
+        "published_at": 1786724499000
+      },
+      "b": {
+        "id": "dda6be693dbcb7baf4b8",
+        "source": "bandcamp_daily",
+        "title": "Michael Christmas, Chris Crack & Girl Talk, “Don’t Come To My House Sharing Your Location”",
+        "published_at": 1787060699000
+      },
+      "embedding_similarity": 0.3537,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "The first article discusses scams, Flock, media appearances, and Spotify AI, while the second covers a collaborative music EP."
+    },
+    {
+      "a": {
+        "id": "63d813a0c340cc5b4888",
+        "source": "parool_amsterdam",
+        "title": "Krakers in miljoenenvilla aan de Amsteldijk mogen blijven van de rechter, maar moeten zich wel ‘behoorlijk’ gedragen",
+        "published_at": 1787066340000
+      },
+      "b": {
+        "id": "9fe38c0d862f0ffea07f",
+        "source": "dutchnews",
+        "title": "Schiphol security staff begin strike action over workload",
+        "published_at": 1787145287000
+      },
+      "embedding_similarity": 0.3472,
+      "label": "UNRELATED",
+      "confidence": 1,
+      "reason": "The first article concerns squatters in an Amsterdam villa, while the second concerns Schiphol security staff strikes over workload."
+    },
+    {
+      "a": {
+        "id": "12af44f00e07c1aea10f",
+        "source": "nltimes",
+        "title": "Dutch municipalities rely more on tourist tax, but share in total income still limited",
+        "published_at": 1787130600000
+      },
+      "b": {
+        "id": "b0fcee2e74c46c850e69",
+        "source": "dutchnews",
+        "title": "Dutch media attack “chilling” fines for slimming drugs coverage",
+        "published_at": 1787127453000
+      },
+      "embedding_similarity": 0.3414,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "The articles concern different subjects: municipal tourist-tax revenue versus fines imposed on media coverage of slimming drugs."
+    },
+    {
+      "a": {
+        "id": "97d7a2e58687b57718ec",
+        "source": "latent_space",
+        "title": "Frontier Model Cost and Open-Weights Popularity is Driving Demand for Model Routing",
+        "published_at": 1787089270000
+      },
+      "b": {
+        "id": "c4cb331229306003d5c7",
+        "source": "lennys_newsletter",
+        "title": "🎙️ How I AI: How a solo founder used Codex and ChatGPT to launch a fashion brand without engineers",
+        "published_at": 1786978996000
+      },
+      "embedding_similarity": 0.3354,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "The articles cover different subjects: enterprise model routing and AI cost control versus a solo founder using AI tools to launch a fashion brand."
+    },
+    {
+      "a": {
+        "id": "55d58e99d3b531f01b94",
+        "source": "stereogum",
+        "title": "Index – “Earth”",
+        "published_at": 1787070615000
+      },
+      "b": {
+        "id": "95dd26d19ff9ba88c414",
+        "source": "bandcamp_daily",
+        "title": "L’Rain, “fata morgana”",
+        "published_at": 1786974243000
+      },
+      "embedding_similarity": 0.3305,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "The articles cover different artists and releases with no meaningful connection."
+    },
+    {
+      "a": {
+        "id": "24ffaf0310b1657ff39f",
+        "source": "marginalian",
+        "title": "Wholeness and the Implicate Order: Physicist David Bohm on Bridging Consciousness and Reality",
+        "published_at": 1786968087000
+      },
+      "b": {
+        "id": "86c557ced7ca3b2a8f08",
+        "source": "greater_good",
+        "title": "Why Should We Keep Trying to Talk Across Political Differences?",
+        "published_at": 1787055960000
+      },
+      "embedding_similarity": 0.3257,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "The first article explores Bohm's philosophical physics of wholeness, while the second discusses communicating across political differences."
+    },
+    {
+      "a": {
+        "id": "bcb587f0a00ebcdcf89b",
+        "source": "aeon",
+        "title": "Worm munch matters",
+        "published_at": 1786960800000
+      },
+      "b": {
+        "id": "e9fb9c24729ca61eec9b",
+        "source": "noema",
+        "title": "The Nature Of Free Will In The Age Of AI",
+        "published_at": 1786633823000
+      },
+      "embedding_similarity": 0.3209,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "One article concerns soil organisms and ecological monitoring, while the other addresses free will in the context of AI."
+    },
+    {
+      "a": {
+        "id": "93a0a3305032ce1ab937",
+        "source": "bandcamp_daily",
+        "title": "Uncovering Obscure Records",
+        "published_at": 1786730621000
+      },
+      "b": {
+        "id": "bcb587f0a00ebcdcf89b",
+        "source": "aeon",
+        "title": "Worm munch matters",
+        "published_at": 1786960800000
+      },
+      "embedding_similarity": 0.3162,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "One article surveys Brian Eno's obscure record-label releases, while the other discusses soil-dwelling organisms and ecological health."
+    },
+    {
+      "a": {
+        "id": "21d5bc09f4372937e991",
+        "source": "daring_fireball",
+        "title": "Reed Jobs Tells a Neuroscience Story",
+        "published_at": 1786546084000
+      },
+      "b": {
+        "id": "51e09d1bf0a6d8835e70",
+        "source": "marginalian",
+        "title": "Constellating Wonder: Celebrating 20 Years of The Marginalian (October 23, 2026)",
+        "published_at": 1786723996000
+      },
+      "embedding_similarity": 0.3121,
+      "label": "UNRELATED",
+      "confidence": 0.98,
+      "reason": "The first article concerns Reed Jobs telling a neuroscience story, while the second is a personal retrospective celebrating The Marginalian's 20th anniversary."
+    },
+    {
+      "a": {
+        "id": "5cbb51a032d2ddd074ff",
+        "source": "daring_fireball",
+        "title": "Google’s Pixel Watch 5",
+        "published_at": 1786563483000
+      },
+      "b": {
+        "id": "aef9f84bdd3cf1a19462",
+        "source": "404media",
+        "title": "Behind the Blog: Endless Scam Parade",
+        "published_at": 1786724499000
+      },
+      "embedding_similarity": 0.3078,
+      "label": "UNRELATED",
+      "confidence": 1,
+      "reason": "The first article concerns Google's Pixel Watch 5, while the second discusses scams, Flock, media appearances, and Spotify's AI move."
+    },
+    {
+      "a": {
+        "id": "5ee9c385f747bd90aaf2",
+        "source": "pragmatic_engineer",
+        "title": "The Pulse: Meta’s self-inflicted resignation-wave",
+        "published_at": 1786726555000
+      },
+      "b": {
+        "id": "7e2f3bad36b2470ed6a4",
+        "source": "longreads",
+        "title": "Bucking Expectations: A Conversation with Rachel Hartigan",
+        "published_at": 1787047200000
+      },
+      "embedding_similarity": 0.3037,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "The first article discusses Meta employee retention and AI agents, while the second is an interview with Rachel Hartigan about saying yes."
+    },
+    {
+      "a": {
+        "id": "52722f8911ce539fda94",
+        "source": "rock_paper_shotgun",
+        "title": "Clipmatrix is a Counter-Strike-like, bunny hopping, platforming romp through surreal and industrial locales",
+        "published_at": 1787089948000
+      },
+      "b": {
+        "id": "c1fbebfe77a3c54a79b5",
+        "source": "aftermath",
+        "title": "This Is Hopefully The Last Time I'm Writing About 1666: Amsterdam",
+        "published_at": 1786745027000
+      },
+      "embedding_similarity": 0.3,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "The articles discuss entirely different subjects: a bunny-hopping platforming game versus AI-assisted illustration and the game 1666: Amsterdam."
+    },
+    {
+      "a": {
+        "id": "326b5d1d173652a9b308",
+        "source": "nos_binnenland",
+        "title": "Aantal tandartsen van buiten EU is verdubbeld, terwijl studenten hier worden uitgeloot",
+        "published_at": 1787062920000
+      },
+      "b": {
+        "id": "9fe38c0d862f0ffea07f",
+        "source": "dutchnews",
+        "title": "Schiphol security staff begin strike action over workload",
+        "published_at": 1787145287000
+      },
+      "embedding_similarity": 0.2617,
+      "label": "UNRELATED",
+      "confidence": 1,
+      "reason": "The articles concern different subjects: foreign-trained dentists in the Netherlands versus industrial action by Schiphol security staff."
+    },
+    {
+      "a": {
+        "id": "a9a43b90ec59e1bb7da9",
+        "source": "simon_willison",
+        "title": "Quoting John Gruber",
+        "published_at": 1786147840000
+      },
+      "b": {
+        "id": "fcc1e443fd62e3c8640f",
+        "source": "longreads",
+        "title": "Mister Anthony",
+        "published_at": 1786375800000
+      },
+      "embedding_similarity": 0.2357,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "The articles concern different subjects: blogging and live-performance writing versus a personal narrative about Mister Anthony."
+    },
+    {
+      "a": {
+        "id": "098971efe7e6a5c827a8",
+        "source": "marginalian",
+        "title": "Arundhati Roy on the Deepest Measure of Success",
+        "published_at": 1786699292000
+      },
+      "b": {
+        "id": "78c7bf7811f122bad100",
+        "source": "letterboxd_journal",
+        "title": "Strange Connection: Gregg Araki and Joseph Gordon-Levitt on the lingering power of Mysterious Skin",
+        "published_at": 1786974685000
+      },
+      "embedding_similarity": 0.2163,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "The first article presents Arundhati Roy's reflections on success, while the second discusses Gregg Araki and Joseph Gordon-Levitt's film and its themes."
+    },
+    {
+      "a": {
+        "id": "3e33ec90c8b0307fd144",
+        "source": "kottke",
+        "title": "Ring of Fire in the Sky",
+        "published_at": 1787082480000
+      },
+      "b": {
+        "id": "ce4a51c97793384e81d6",
+        "source": "404media",
+        "title": "The National Park Service Is Using Flock. Rangers Are Pissed",
+        "published_at": 1787059289000
+      },
+      "embedding_similarity": 0.1997,
+      "label": "UNRELATED",
+      "confidence": 0.98,
+      "reason": "The first article concerns a celestial ring of fire, while the second reports controversy over license-plate surveillance in national parks."
+    },
+    {
+      "a": {
+        "id": "d4f766f24a0597e00862",
+        "source": "latent_space",
+        "title": "[AINews] How to steal a Reasoning Trace",
+        "published_at": 1786518668000
+      },
+      "b": {
+        "id": "fcc1e443fd62e3c8640f",
+        "source": "longreads",
+        "title": "Mister Anthony",
+        "published_at": 1786375800000
+      },
+      "embedding_similarity": 0.1851,
+      "label": "UNRELATED",
+      "confidence": 1,
+      "reason": "The first article concerns AI reasoning traces and speculative decoding, while the second is a personal long-form story about Mister Anthony and a bus-driving grandfather."
+    },
+    {
+      "a": {
+        "id": "4be7f2336d577d472438",
+        "source": "rock_paper_shotgun",
+        "title": "The Lantern of the Laughless Saint, a Morrowind-inspired RPG weirdfest out this week in early access, has immediately seduced me with dialogue camera hijinks",
+        "published_at": 1787069669000
+      },
+      "b": {
+        "id": "dc7e8b1c13894f42310b",
+        "source": "parool_amsterdam",
+        "title": "‘Deze man is geen boef, constateer ik, maar een hosselaar die wil overleven’",
+        "published_at": 1787151645000
+      },
+      "embedding_similarity": 0.1714,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "The first article discusses an early-access Morrowind-inspired RPG, while the second concerns a Dutch-language profile or observation of a hustler and has no meaningful connection."
+    },
+    {
+      "a": {
+        "id": "71b9d0136d954d359ea4",
+        "source": "stereogum",
+        "title": "Meadow Announce Self-Titled Debut Album: Hear “Yon”",
+        "published_at": 1787069518000
+      },
+      "b": {
+        "id": "ce4a51c97793384e81d6",
+        "source": "404media",
+        "title": "The National Park Service Is Using Flock. Rangers Are Pissed",
+        "published_at": 1787059289000
+      },
+      "embedding_similarity": 0.1582,
+      "label": "UNRELATED",
+      "confidence": 1,
+      "reason": "One article covers a band's debut album announcement, while the other reports controversy over license-plate readers in national parks."
+    },
+    {
+      "a": {
+        "id": "4ae53abb4784b24ec817",
+        "source": "game_developer",
+        "title": "Netflix closing Oxenfree developer Night School Studio and Moonloot Games",
+        "published_at": 1786650855000
+      },
+      "b": {
+        "id": "6f172ddd61c4c68f256d",
+        "source": "bandcamp_daily",
+        "title": "Reggae Left Behind By Streaming",
+        "published_at": 1786382670000
+      },
+      "embedding_similarity": 0.1455,
+      "label": "UNRELATED",
+      "confidence": 1,
+      "reason": "One article concerns Netflix game-studio closures, while the other discusses reggae music availability on streaming platforms."
+    },
+    {
+      "a": {
+        "id": "036901538703c8802c77",
+        "source": "nltimes",
+        "title": "ChatGPT ads coming to Netherlands next week as OpenAI expands across Europe",
+        "published_at": 1787164800000
+      },
+      "b": {
+        "id": "8a0758e85a54b23e3973",
+        "source": "stereogum",
+        "title": "Holy Motors – “Hellishly Hot”",
+        "published_at": 1787064008000
+      },
+      "embedding_similarity": 0.1325,
+      "label": "UNRELATED",
+      "confidence": 1,
+      "reason": "One article concerns ChatGPT advertising expansion in the Netherlands, while the other covers a new song by the band Holy Motors."
+    },
+    {
+      "a": {
+        "id": "29888f602c1c0ac92a68",
+        "source": "ieee_spectrum",
+        "title": "IEEE Presidents’ Scholarship Honors Teen Innovators",
+        "published_at": 1786989604000
+      },
+      "b": {
+        "id": "59c03451ff23258290c4",
+        "source": "psyche",
+        "title": "Don’t let nature slip out of reach",
+        "published_at": 1787047200000
+      },
+      "embedding_similarity": 0.1196,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "One article covers student disability-focused inventions, while the other discusses declining human connection with nature."
+    },
+    {
+      "a": {
+        "id": "ec0a36cb24c85594a5c1",
+        "source": "daring_fireball",
+        "title": "Nature Is Healing",
+        "published_at": 1786545791000
+      },
+      "b": {
+        "id": "fe5bd253abc2bd65f464",
+        "source": "kottke",
+        "title": "“Widely regarded as the most complicated board...",
+        "published_at": 1786494300000
+      },
+      "embedding_similarity": 0.1062,
+      "label": "UNRELATED",
+      "confidence": 0.98,
+      "reason": "The titles indicate different subjects, with the first about nature and the second about a complicated board game or board-related topic."
+    },
+    {
+      "a": {
+        "id": "350e64f56e3da392616e",
+        "source": "simon_willison",
+        "title": "alchemy-utils 0.1a1",
+        "published_at": 1786590197000
+      },
+      "b": {
+        "id": "d1766c15db6567873b85",
+        "source": "404media",
+        "title": "Memories Mysteriously Survive After Brain Shutdown, And Scientists Don’t Know Why",
+        "published_at": 1786788042000
+      },
+      "embedding_similarity": 0.0914,
+      "label": "UNRELATED",
+      "confidence": 1,
+      "reason": "One article announces a DuckDB/CSV utility software release, while the other reports neuroscience research on memory persistence in hibernating mice."
+    },
+    {
+      "a": {
+        "id": "1e7a52b99dad9dc06cc2",
+        "source": "parool_amsterdam",
+        "title": "Colourful Noord Festival viert de diversiteit van Amsterdam-Noord: ‘Dit soort verbindingen is heel belangrijk voor de buurt’",
+        "published_at": 1786323658000
+      },
+      "b": {
+        "id": "3061e157b8dfbf600bf4",
+        "source": "rock_paper_shotgun",
+        "title": "Sandustry, the factory game where every single pixel is a resource you can build with, is out in early access",
+        "published_at": 1786638727000
+      },
+      "embedding_similarity": 0.074,
+      "label": "UNRELATED",
+      "confidence": 1,
+      "reason": "One article covers a diversity festival in Amsterdam-Noord, while the other discusses a factory-building video game release."
+    },
+    {
+      "a": {
+        "id": "4422126d78ac4443415f",
+        "source": "letterboxd_journal",
+        "title": "Litterboxd: twenty fantastic film felines for International Cat Day",
+        "published_at": 1786204351000
+      },
+      "b": {
+        "id": "f736b4a000ab7162bd2a",
+        "source": "game_developer",
+        "title": "EA taken private by Saudi Arabia, GTA marketing jumps the shark, and Devolver's huge mistake - Patch Notes #64",
+        "published_at": 1786100590000
+      },
+      "embedding_similarity": 0.052,
+      "label": "UNRELATED",
+      "confidence": 0.99,
+      "reason": "One article celebrates memorable movie cats, while the other discusses gaming-industry news and music."
+    }
+  ]
+}

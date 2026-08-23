@@ -1,0 +1,62 @@
+version: 2
+about_me: >
+  I read to understand important changes, encounter excellent explanations, and
+  occasionally discover an irresistible subject I did not know I cared about.
+strong_interests:
+  - consequential technology and science
+  - society and institutions
+  - excellent narrative and explanatory writing
+topic_priorities:
+  - id: consequential_change
+    priority: 8
+    guidance: Important changes explained through evidence, mechanisms, and concrete consequences.
+  - id: science_and_ideas
+    priority: 7
+    guidance: Accessible discoveries and ideas that materially change understanding.
+  - id: wildcard
+    priority: 6
+    guidance: Exceptional stories outside established interests when voice or execution makes them irresistible.
+positive_content_traits:
+  - strong analysis and evidence
+  - clear mechanisms and second-order effects
+  - narrative momentum and distinctive voice
+negative_content_traits:
+  - thin aggregation and routine announcements
+  - generic advice and SEO filler
+  - ragebait and tribal point-scoring
+editorial_notes: >
+  Topic fit is a prior, not a substitute for quality. Keep a selective mix of
+  timely developments, durable analysis, narrative work, and serendipity.
+style_references: []
+positive_examples: []
+negative_examples: []
+reader_preferences:
+  version: 1
+  attention_budget: 15_30
+  article_length: long_when_exceptional
+  paywall_policy: free_only
+  subscribed_publications: []
+  languages: [en]
+  non_primary_language_policy: never
+  freshness_balance: balanced
+  max_evergreen_age_days: null
+  serendipity: 5
+  writing_voices: []
+  disliked_styles: []
+  medium_preferences: []
+source_preferences: []
+interest_anchors:
+  - id: consequential_change
+    category: other
+    text: Consequential changes in technology, science, society, or institutions with concrete evidence and implications.
+  - id: excellent_explanation
+    category: other
+    text: Excellent explanatory or narrative work with mechanisms, evidence, voice, and a memorable payoff.
+  - id: wildcard
+    category: wildcard
+    text: An irresistible investigation, unusual expert, surprising story, or delightful rabbit hole outside familiar interests.
+avoid_anchors:
+  - id: thin_content
+    text: Thin aggregation, routine press releases, generic advice, SEO filler, and content replaceable by its headline.
+  - id: outrage
+    text: Ragebait, tribal point-scoring, performative conflict, and manipulation without durable insight.

@@ -1,0 +1,152 @@
+# ---------------------------------------------------------------------------
+# final-ranking.yaml
+#
+# Stage 4 gating, stage 5 gating, and stage 6 portfolio construction.
+#
+# The principle this file encodes:
+#
+#   Source weighting and heuristics control how much opportunity content gets to
+#   REQUEST. They must not override high-quality article-level judgment.
+#
+# So source priors are strong before Luna, weaker at the Luna->Terra gate, and
+# nearly absent once Terra has actually read the article.
+# ---------------------------------------------------------------------------
+
+version: 1
+
+# --- Stage 4: Luna gating ---------------------------------------------------
+# Luna advises; this decides. Every term is stored on the evaluation row.
+luna_gate:
+  prompt: cheap-triage-v3
+
+  # Combined score = free_score * free_weight + Luna signals + source prior.
+  weights:
+    free_score: 0.35
+    interest_match: 0.45
+    novelty_likelihood: 0.25
+    quality_prior: 0.12        # prior buys inspection, never article merit
+    junk_probability: -1.20
+
+  threshold: 0.52
+  # Discovery is worth more in some categories than others.
+  category_thresholds:
+    ideas_science: 0.44
+    culture: 0.46
+    games: 0.50
+    ai_product: 0.55
+    other: 0.50
+
+  # Recall-first discounts. A cheaper Terra call is preferable to a silent miss.
+  discounts:
+    uncertain: 0.10            # Luna said UNCERTAIN
+    needs_full_article: 0.06   # summary was too thin to judge
+    high_quality_source: 0.12  # quality_prior >= trusted_quality_prior
+    band_a: 0.06               # the free ranker was already confident
+    exploration: 0.15          # source is under-sampled
+  trusted_quality_prior: 0.78
+
+  # Serendipity candidates bypass the score entirely: this feed exists precisely
+  # to survive a scoring function tuned to established interests.
+  serendipity_bypass_max_junk: 0.35
+
+  # Ceiling on Terra calls per run. Sized against the target funnel
+  # (~1,000-1,500 Terra calls/month).
+  terra_budget_per_run: 60
+
+  # --- Audit sampling at the Luna/Terra boundary ---------------------------
+  audit:
+    rejected_sample_rate: 0.05
+    max_per_run: 5
+
+# --- Stage 5: what reaches Terra at all -------------------------------------
+terra_gate:
+  prompt: deep-ranking-v4
+  # Terra scores are only comparable within one prompt version, so items scored
+  # by an older prompt are re-scored rather than left to outrank everything
+  # since. This is the share of a run's Terra budget reserved for that backfill;
+  # the rest still goes to new items, so a prompt change never stalls the feed.
+  restale_budget_fraction: 0.25
+  # Cluster de-duplication before paying Terra. Commodity reporting on a story
+  # is dropped; differentiated takes survive.
+  cluster:
+    max_members_per_run: 3
+    # A second member needs a differentiated source or a clearly better free
+    # score to justify the second call.
+    second_member_min_free_score_ratio: 0.85
+    second_member_min_uniqueness: 0.45
+  # Extract the full article first wherever possible.
+  require_extraction: true
+
+# --- Stage 6: portfolio construction ---------------------------------------
+# Not "sort by expected_attention_value and take N". Feeds are built by repeated
+# marginal-value selection: after each pick, every remaining candidate is
+# re-scored against what the edition already contains.
+final_ranking:
+  # Terra's scores dominate here. Source quality is nearly spent: it bought the
+  # article its Terra call, and Terra has now read it.
+  base_weights:
+    terra_score: 1.00
+    quality_prior: 0.04
+    feed_weight: 0.16          # source fit matters less than the read article
+    learned_source_value: 0.08 # empirical, bounded feedback
+
+  # --- Diminishing returns, not caps --------------------------------------
+  # Applied per feed as the edition is built. An exceptional fourth item from one
+  # source can still win a slot.
+  source_diminishing:
+    decay: [1.00, 0.90, 0.75, 0.55, 0.40, 0.28]
+    tail: 0.20
+    # Absolute backstop per feed per day. Only for pathological cases.
+    hard_cap_per_feed_per_day: 6
+
+  topic_diminishing:
+    # Same category already in today's edition of this feed.
+    decay: [1.00, 0.88, 0.72, 0.55, 0.42]
+    tail: 0.30
+    # Same story cluster. Much steeper: a second take must be excellent.
+    cluster_decay: [1.00, 0.55, 0.25]
+    cluster_tail: 0.10
+    # A second cluster member also needs Terra to say it is not a recap.
+    cluster_max_duplicate_information: 0.45
+
+  # --- Correlated sources -------------------------------------------------
+  # Two sources that cover the same clusters most of the time carry overlapping
+  # information. If one has already contributed today, the other's marginal value
+  # drops. Overlap comes from source_overlap_statistics.
+  correlation:
+    enabled: true
+    min_shared_clusters: 4        # below this there is not enough evidence
+    # penalty = strength * overlap * (items already published from the partner)
+    strength: 0.25
+    max_penalty: 0.35
+
+  # --- Attention budgets ---------------------------------------------------
+  # A 35-minute essay costs far more than a 4-minute post, so feeds are sized in
+  # minutes as well as items. Deliberately loose in this first version: the
+  # infrastructure matters more than the exact numbers.
+  attention:
+    enabled: true
+    default_reading_minutes: 8      # when nothing better is known
+    # A feed stops taking items once its minute budget is spent, even if its item
+    # cap is unfilled. Set minutes_per_day: null to disable for a feed.
+    overflow_tolerance_minutes: 10  # allow the last item to spill over a little
+
+  # --- Exploration --------------------------------------------------------
+  # Reserved slots that behavioural learning cannot compete away.
+  exploration:
+    fraction: 0.20
+    # At least this many slots per day across all feeds go to items from
+    # under-sampled sources or high-distance topics.
+    min_slots_per_day: 1
+    # What counts as "exploratory" outside the Serendipity feed, and so what may
+    # claim a protected slot. Both must hold.
+    min_anchor_distance: 0.50
+    min_serendipity: 0.50
+
+  # An item is never published to more than this many feeds.
+  max_feeds_per_item: 2
+  # Order in which feeds claim items.
+  feed_priority: [essential, ai_product, ideas_science, games, culture, serendipity]
+  # How many items each generated feed document holds.
+  feed_length: 60
+  tracked_links: true

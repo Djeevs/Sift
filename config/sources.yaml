@@ -1,0 +1,1113 @@
+# ---------------------------------------------------------------------------
+# sources.yaml
+#
+# A source is not a single weight. Each one carries:
+#
+#   quality_prior      How likely an item from here deserves deeper inspection.
+#                      Dominates before Luna; deliberately fades after Terra has
+#                      actually read the article (see final-ranking.yaml).
+#   volume_budget      How much attention this source may *request*. A busy feed
+#                      gets a smaller budget so it cannot crowd the funnel.
+#   exploration_floor  A floor that keeps new or rarely-surfaced sources from
+#                      disappearing permanently.
+#   category_priors    Quality differs by topic: 404 Media on internet culture is
+#                      not 404 Media on physics. Unlisted categories fall back to
+#                      `default`.
+#   feed_weights       How welcome this source is in each generated feed.
+#   hard_rules         Deterministic per-source drops (stage 2). Never relevance.
+#
+# Learned statistics live in the database (source_statistics) and never overwrite
+# these values -- both are combined at scoring time.
+# ---------------------------------------------------------------------------
+
+defaults:
+  feed_type: article
+  language: en
+  enabled: true
+  access: free
+  item_kind: article
+  quality_prior: 0.55
+  volume_budget: 1.0
+  exploration_floor: 0.08
+  category_priors:
+    default: 0.45
+  feed_weights:
+    default: 0.60
+
+sources:
+
+  # Storage identity for candidates found outside configured feeds. It is never
+  # polled or eligible for ordinary editions; the Classics lane owns it.
+  - id: classics_archive
+    name: "Sift Classics Discovery"
+    feed_url: https://hn.algolia.com/api/v1/search
+    enabled: false
+    publishable: false
+    quality_prior: 0.50
+    volume_budget: 0
+    exploration_floor: 0
+    category_priors:
+      default: 0.35
+    feed_weights:
+      default: 0.00
+
+  - id: simon_willison
+    name: "Simon Willison"
+    feed_url: https://simonwillison.net/atom/everything/
+    feed_type: linkblog
+    quality_prior: 0.92
+    volume_budget: 1
+    exploration_floor: 0.08
+    category_priors:
+      ai_product: 1.00
+      default: 0.35
+    feed_weights:
+      essential: 0.85
+      ai_product: 1.00
+      serendipity: 0.25
+      default: 0.30
+
+  - id: hacker_news
+    name: "Hacker News Discovery"
+    feed_url: https://hacker-news.firebaseio.com/v0/topstories.json
+    feed_type: linkblog
+    quality_prior: 0.55
+    volume_budget: 0.35
+    exploration_floor: 0.12
+    discovery:
+      type: hacker_news
+      max_candidates: 120
+      max_items: 15
+      max_age_hours: 48
+      min_points: 35
+      min_comments: 8
+      min_engagement_signal: 5
+    category_priors:
+      ai_product: 0.65
+      culture: 0.55
+      default: 0.45
+    feed_weights:
+      essential: 0.35
+      ai_product: 0.65
+      ideas_science: 0.45
+      games: 0.40
+      culture: 0.50
+      serendipity: 0.45
+      default: 0.35
+    hard_rules:
+      require_readable_article: true
+
+  - id: product_hunt
+    name: "Product Hunt"
+    feed_url: https://www.producthunt.com/feed
+    item_kind: product
+    quality_prior: 0.48
+    volume_budget: 0.25
+    exploration_floor: 0.12
+    category_priors:
+      ai_product: 0.85
+      default: 0.35
+    feed_weights:
+      essential: 0.25
+      ai_product: 0.90
+      serendipity: 0.35
+      default: 0.25
+    hard_rules:
+      content_type: announcement
+
+  - id: interconnected
+    name: "Interconnected — Matt Webb"
+    feed_url: https://interconnected.org/home/feed
+    quality_prior: 0.90
+    volume_budget: 0.85
+    exploration_floor: 0.10
+    category_priors:
+      ai_product: 0.90
+      culture: 0.70
+      ideas_science: 0.65
+      default: 0.45
+    feed_weights:
+      essential: 0.80
+      ai_product: 0.95
+      ideas_science: 0.70
+      culture: 0.65
+      serendipity: 0.55
+      default: 0.40
+
+  - id: citation_needed
+    name: "Citation Needed — Molly White"
+    feed_url: https://www.citationneeded.news/rss/
+    quality_prior: 0.86
+    volume_budget: 0.75
+    exploration_floor: 0.10
+    category_priors:
+      culture: 0.85
+      ai_product: 0.70
+      ideas_science: 0.65
+      default: 0.45
+    feed_weights:
+      essential: 0.70
+      ai_product: 0.65
+      ideas_science: 0.65
+      culture: 0.90
+      serendipity: 0.45
+      default: 0.40
+
+  - id: interconnects
+    name: "Interconnects"
+    feed_url: https://www.interconnects.ai/feed
+    enabled: false
+    access: mixed
+    quality_prior: 0.68
+    volume_budget: 1
+    exploration_floor: 0.08
+    category_priors:
+      ai_product: 1.00
+      default: 0.35
+    feed_weights:
+      essential: 0.70
+      ai_product: 1.00
+      serendipity: 0.25
+      default: 0.30
+
+  - id: one_useful_thing
+    name: "One Useful Thing"
+    feed_url: https://www.oneusefulthing.org/feed
+    quality_prior: 0.74
+    volume_budget: 1
+    exploration_floor: 0.08
+    category_priors:
+      ai_product: 1.00
+      default: 0.35
+    feed_weights:
+      essential: 0.45
+      ai_product: 1.00
+      serendipity: 0.25
+      default: 0.30
+
+  - id: 404media
+    name: "404 Media"
+    feed_url: https://www.404media.co/rss/
+    enabled: false
+    access: paywalled
+    quality_prior: 0.71
+    volume_budget: 1
+    exploration_floor: 0.08
+    category_priors:
+      ai_product: 1.00
+      culture: 0.80
+      default: 0.35
+    feed_weights:
+      essential: 0.45
+      ai_product: 1.00
+      culture: 1.00
+      serendipity: 0.25
+      default: 0.30
+
+  - id: ai_snake_oil
+    name: "AI Snake Oil"
+    feed_url: https://www.aisnakeoil.com/feed
+    quality_prior: 0.84
+    volume_budget: 1
+    exploration_floor: 0.08
+    category_priors:
+      ai_product: 1.00
+      default: 0.35
+    feed_weights:
+      essential: 0.70
+      ai_product: 1.00
+      serendipity: 0.25
+      default: 0.30
+
+  - id: latent_space
+    name: "Latent Space"
+    feed_url: https://www.latent.space/feed
+    quality_prior: 0.67
+    volume_budget: 1
+    exploration_floor: 0.08
+    category_priors:
+      ai_product: 1.00
+      default: 0.35
+    feed_weights:
+      essential: 0.45
+      ai_product: 1.00
+      serendipity: 0.25
+      default: 0.30
+
+  - id: pragmatic_engineer
+    name: "The Pragmatic Engineer"
+    feed_url: https://newsletter.pragmaticengineer.com/feed
+    enabled: false
+    access: mixed
+    quality_prior: 0.48
+    volume_budget: 1
+    exploration_floor: 0.08
+    category_priors:
+      ai_product: 1.00
+      default: 0.35
+    feed_weights:
+      essential: 0.45
+      ai_product: 1.00
+      serendipity: 0.25
+      default: 0.30
+
+  - id: lennys_newsletter
+    name: "Lenny's Newsletter"
+    feed_url: https://www.lennysnewsletter.com/feed
+    enabled: false
+    access: mixed
+    quality_prior: 0.38
+    volume_budget: 1
+    exploration_floor: 0.08
+    category_priors:
+      ai_product: 1.00
+      default: 0.35
+    feed_weights:
+      essential: 0.25
+      ai_product: 1.00
+      serendipity: 0.25
+      default: 0.30
+    hard_rules:
+      drop_title_patterns:
+        - "\\bjob board\\b"
+        - "^\\[.*\\]\\s*hiring"
+
+  - id: daring_fireball
+    name: "Daring Fireball"
+    feed_url: https://daringfireball.net/feeds/main
+    feed_type: linkblog
+    quality_prior: 0.6
+    volume_budget: 1
+    exploration_floor: 0.08
+    category_priors:
+      ai_product: 1.00
+      culture: 0.80
+      default: 0.35
+    feed_weights:
+      essential: 0.45
+      ai_product: 1.00
+      culture: 1.00
+      serendipity: 0.25
+      default: 0.30
+
+  - id: ieee_spectrum
+    name: "IEEE Spectrum"
+    feed_url: https://spectrum.ieee.org/feeds/feed.rss
+    quality_prior: 0.6
+    volume_budget: 0.4
+    exploration_floor: 0.08
+    category_priors:
+      ai_product: 1.00
+      ideas_science: 0.80
+      default: 0.35
+    feed_weights:
+      essential: 0.45
+      ai_product: 1.00
+      ideas_science: 1.00
+      serendipity: 0.25
+      default: 0.30
+
+  - id: quanta
+    name: "Quanta Magazine"
+    feed_url: https://www.quantamagazine.org/feed/
+    quality_prior: 0.92
+    volume_budget: 1
+    exploration_floor: 0.08
+    category_priors:
+      ideas_science: 1.00
+      default: 0.35
+    feed_weights:
+      essential: 0.85
+      ideas_science: 1.00
+      serendipity: 0.30
+      default: 0.30
+
+  - id: works_in_progress
+    name: "Works in Progress"
+    feed_url: https://www.worksinprogress.news/feed
+    quality_prior: 0.88
+    volume_budget: 1
+    exploration_floor: 0.08
+    category_priors:
+      ideas_science: 1.00
+      default: 0.35
+    feed_weights:
+      essential: 0.75
+      ideas_science: 1.00
+      serendipity: 0.45
+      default: 0.30
+
+  - id: construction_physics
+    name: "Construction Physics"
+    feed_url: https://www.construction-physics.com/feed
+    enabled: false
+    access: mixed
+    quality_prior: 0.62
+    volume_budget: 1
+    exploration_floor: 0.08
+    category_priors:
+      ideas_science: 1.00
+      default: 0.35
+    feed_weights:
+      essential: 0.70
+      ideas_science: 1.00
+      serendipity: 0.40
+      default: 0.30
+
+  - id: knowable
+    name: "Knowable Magazine"
+    feed_url: https://knowablemagazine.org/rss
+    quality_prior: 0.78
+    volume_budget: 1
+    exploration_floor: 0.08
+    category_priors:
+      ideas_science: 1.00
+      default: 0.35
+    feed_weights:
+      essential: 0.70
+      ideas_science: 1.00
+      serendipity: 0.45
+      default: 0.30
+
+  - id: nautilus
+    name: "Nautilus"
+    feed_url: https://nautil.us/feed/
+    quality_prior: 0.71
+    volume_budget: 1
+    exploration_floor: 0.08
+    category_priors:
+      ideas_science: 1.00
+      default: 0.35
+    feed_weights:
+      essential: 0.45
+      ideas_science: 1.00
+      serendipity: 0.45
+      default: 0.30
+
+  - id: noema
+    name: "Noema Magazine"
+    feed_url: https://www.noemamag.com/feed/
+    quality_prior: 0.74
+    volume_budget: 1
+    exploration_floor: 0.08
+    category_priors:
+      ideas_science: 1.00
+      culture: 0.80
+      default: 0.35
+    feed_weights:
+      essential: 0.45
+      ideas_science: 1.00
+      culture: 1.00
+      serendipity: 0.40
+      default: 0.30
+
+  - id: asterisk
+    name: "Asterisk Magazine"
+    feed_url: https://asteriskmag.com/feed
+    quality_prior: 0.78
+    volume_budget: 1
+    exploration_floor: 0.08
+    category_priors:
+      ideas_science: 1.00
+      default: 0.35
+    feed_weights:
+      essential: 0.70
+      ideas_science: 1.00
+      serendipity: 0.25
+      default: 0.30
+
+  - id: lowtech_magazine
+    name: "Low-tech Magazine"
+    feed_url: https://solar.lowtechmagazine.com/feeds/all-en.atom.xml
+    quality_prior: 0.85
+    volume_budget: 1
+    exploration_floor: 0.08
+    category_priors:
+      ideas_science: 1.00
+      default: 0.35
+    feed_weights:
+      essential: 0.70
+      ideas_science: 1.00
+      serendipity: 0.55
+      default: 0.30
+
+  - id: experimental_history
+    name: "Experimental History"
+    feed_url: https://www.experimental-history.com/feed
+    quality_prior: 0.93
+    volume_budget: 1
+    exploration_floor: 0.08
+    category_priors:
+      ideas_science: 1.00
+      default: 0.35
+    feed_weights:
+      essential: 0.80
+      ideas_science: 1.00
+      serendipity: 0.25
+      default: 0.30
+
+  - id: derek_thompson
+    name: "Derek Thompson"
+    feed_url: https://www.derekthompson.org/feed
+    access: mixed
+    quality_prior: 0.86
+    # Several posts per week, with paid posts removed by the page-metadata gate.
+    volume_budget: 0.55
+    exploration_floor: 0.10
+    category_priors:
+      society: 1.00
+      business_economics: 0.85
+      culture: 0.80
+      tech_strategy: 0.72
+      default: 0.40
+    feed_weights:
+      essential: 0.80
+      ideas_science: 1.00
+      culture: 0.85
+      serendipity: 0.45
+      default: 0.35
+    hard_rules:
+      require_explicit_free_article: true
+      require_readable_article: true
+
+  - id: dynomight
+    name: "Dynomight"
+    feed_url: https://dynomight.net/feed.xml
+    quality_prior: 0.89
+    volume_budget: 0.70
+    exploration_floor: 0.12
+    category_priors:
+      ideas_science: 0.90
+      science: 0.80
+      wildcard: 1.00
+      society: 0.72
+      default: 0.55
+    feed_weights:
+      essential: 0.75
+      ideas_science: 0.90
+      culture: 0.55
+      serendipity: 1.00
+      default: 0.40
+
+  - id: noahpinion
+    name: "Noahpinion"
+    feed_url: https://www.noahpinion.blog/feed
+    access: mixed
+    quality_prior: 0.70
+    # High posting frequency and uneven topic fit: the models, not the prior,
+    # must rescue strong economic/societal analysis from routine politics.
+    volume_budget: 0.22
+    exploration_floor: 0.08
+    category_priors:
+      business_economics: 0.82
+      society: 0.70
+      new_technology: 0.65
+      tech_strategy: 0.60
+      culture: 0.35
+      default: 0.30
+    feed_weights:
+      essential: 0.38
+      ai_product: 0.30
+      ideas_science: 0.72
+      culture: 0.25
+      serendipity: 0.28
+      default: 0.25
+    hard_rules:
+      require_explicit_free_article: true
+      require_readable_article: true
+
+  - id: acoup
+    name: "A Collection of Unmitigated Pedantry"
+    feed_url: https://acoup.blog/feed/
+    quality_prior: 0.68
+    volume_budget: 0.35
+    exploration_floor: 0.12
+    # A wildcard by design: topic fit stays modest and exceptional execution
+    # must earn its way through article-level scoring.
+    category_priors:
+      wildcard: 0.82
+      ideas_science: 0.55
+      culture: 0.45
+      games: 0.35
+      default: 0.32
+    feed_weights:
+      essential: 0.35
+      ideas_science: 0.50
+      games: 0.30
+      culture: 0.38
+      serendipity: 1.00
+      default: 0.25
+
+  - id: aeon
+    name: "Aeon"
+    feed_url: https://aeon.co/feed.rss
+    quality_prior: 0.78
+    volume_budget: 1
+    exploration_floor: 0.08
+    category_priors:
+      ideas_science: 1.00
+      culture: 0.80
+      default: 0.35
+    feed_weights:
+      essential: 0.70
+      ideas_science: 1.00
+      culture: 1.00
+      serendipity: 0.50
+      default: 0.30
+
+  - id: psyche
+    name: "Psyche"
+    feed_url: https://psyche.co/feed.rss
+    quality_prior: 0.46
+    volume_budget: 0.35
+    exploration_floor: 0.08
+    category_priors:
+      ideas_science: 1.00
+      default: 0.35
+    feed_weights:
+      essential: 0.45
+      ideas_science: 1.00
+      serendipity: 0.25
+      default: 0.30
+
+  - id: behavioral_scientist
+    name: "Behavioral Scientist"
+    feed_url: https://behavioralscientist.org/feed/
+    quality_prior: 0.52
+    volume_budget: 0.45
+    exploration_floor: 0.08
+    category_priors:
+      ideas_science: 1.00
+      default: 0.35
+    feed_weights:
+      essential: 0.45
+      ideas_science: 1.00
+      serendipity: 0.25
+      default: 0.30
+
+  - id: greater_good
+    name: "Greater Good Magazine"
+    feed_url: https://greatergood.berkeley.edu/rss
+    enabled: false
+    quality_prior: 0.32
+    volume_budget: 0.3
+    exploration_floor: 0.08
+    category_priors:
+      ideas_science: 1.00
+      default: 0.35
+    feed_weights:
+      essential: 0.25
+      ideas_science: 1.00
+      serendipity: 0.25
+      default: 0.30
+
+  - id: marginalian
+    name: "The Marginalian"
+    feed_url: https://www.themarginalian.org/feed/
+    quality_prior: 0.48
+    volume_budget: 0.40
+    exploration_floor: 0.08
+    category_priors:
+      culture: 1.00
+      ideas_science: 0.80
+      default: 0.35
+    feed_weights:
+      essential: 0.45
+      ideas_science: 1.00
+      culture: 1.00
+      serendipity: 0.55
+      default: 0.30
+
+  - id: critical_distance
+    name: "Critical Distance"
+    feed_url: https://www.critical-distance.com/feed/
+    quality_prior: 0.42
+    volume_budget: 0.30
+    exploration_floor: 0.08
+    category_priors:
+      games: 1.00
+      default: 0.35
+    feed_weights:
+      essential: 0.70
+      games: 1.00
+      serendipity: 0.25
+      default: 0.30
+
+  - id: game_file
+    name: "Game File"
+    feed_url: https://www.gamefile.news/feed
+    access: mixed
+    quality_prior: 0.87
+    # The publication sends three issues a week but normally only one is free.
+    volume_budget: 0.45
+    exploration_floor: 0.10
+    category_priors:
+      games_industry: 1.00
+      games: 0.72
+      business_economics: 0.70
+      default: 0.32
+    feed_weights:
+      essential: 0.72
+      games: 1.00
+      ideas_science: 0.42
+      serendipity: 0.25
+      default: 0.28
+    hard_rules:
+      require_explicit_free_article: true
+      require_readable_article: true
+      drop_title_patterns:
+        - "\\b(subscription sale|sale ends|subscribe to Game File)\\b"
+
+  - id: the_game_business
+    name: "The Game Business"
+    feed_url: https://www.thegamebusiness.com/feed
+    access: mixed
+    quality_prior: 0.86
+    volume_budget: 0.55
+    exploration_floor: 0.10
+    category_priors:
+      games_industry: 1.00
+      games: 0.68
+      business_economics: 0.78
+      default: 0.32
+    feed_weights:
+      essential: 0.72
+      games: 1.00
+      ideas_science: 0.42
+      serendipity: 0.25
+      default: 0.28
+    hard_rules:
+      require_explicit_free_article: true
+      require_readable_article: true
+      drop_title_patterns:
+        - "\\b(subscription sale|sale ends|subscribe to The Game Business)\\b"
+
+  - id: aftermath
+    name: "Aftermath"
+    feed_url: https://aftermath.site/feed
+    enabled: false
+    access: paywalled
+    quality_prior: 0.72
+    volume_budget: 1
+    exploration_floor: 0.08
+    category_priors:
+      games: 1.00
+      culture: 0.80
+      default: 0.35
+    feed_weights:
+      essential: 0.70
+      games: 1.00
+      culture: 1.00
+      serendipity: 0.25
+      default: 0.30
+
+  - id: vghf
+    name: "Video Game History Foundation"
+    feed_url: https://gamehistory.org/feed/
+    quality_prior: 0.52
+    volume_budget: 0.45
+    exploration_floor: 0.08
+    category_priors:
+      games: 1.00
+      default: 0.35
+    feed_weights:
+      essential: 0.70
+      games: 1.00
+      serendipity: 0.35
+      default: 0.30
+
+  - id: gamediscoverco
+    name: "GameDiscoverCo"
+    feed_url: https://newsletter.gamediscover.co/feed
+    enabled: false
+    access: mixed
+    quality_prior: 0.45
+    volume_budget: 1
+    exploration_floor: 0.08
+    category_priors:
+      games: 1.00
+      default: 0.35
+    feed_weights:
+      essential: 0.45
+      games: 1.00
+      serendipity: 0.25
+      default: 0.30
+
+  - id: digital_antiquarian
+    name: "The Digital Antiquarian"
+    feed_url: https://www.filfre.net/feed/
+    quality_prior: 0.46
+    volume_budget: 0.35
+    exploration_floor: 0.08
+    category_priors:
+      games: 1.00
+      default: 0.35
+    feed_weights:
+      essential: 0.60
+      games: 1.00
+      serendipity: 0.25
+      default: 0.30
+
+  - id: rock_paper_shotgun
+    name: "Rock Paper Shotgun"
+    feed_url: https://www.rockpapershotgun.com/feed
+    quality_prior: 0.30
+    volume_budget: 0.12
+    exploration_floor: 0.08
+    category_priors:
+      games: 1.00
+      default: 0.35
+    feed_weights:
+      essential: 0.15
+      games: 1.00
+      serendipity: 0.25
+      default: 0.30
+    hard_rules:
+      drop_feed_categories:
+        - "deals"
+        - "hardware deals"
+      drop_title_patterns:
+        - "\\bis (now )?(out|available) now\\b"
+        - "\\brelease date\\b"
+        - "\\btrailer\\b"
+        - "\\bdeal(s)? of the (day|week)\\b"
+        - "^.{0,40}(patch|hotfix) notes\\b"
+
+  - id: game_developer
+    name: "Game Developer"
+    feed_url: https://www.gamedeveloper.com/rss.xml
+    quality_prior: 0.38
+    volume_budget: 0.15
+    exploration_floor: 0.08
+    category_priors:
+      games: 1.00
+      default: 0.35
+    feed_weights:
+      essential: 0.25
+      games: 1.00
+      serendipity: 0.25
+      default: 0.30
+    hard_rules:
+      drop_title_patterns:
+        - "\\blayoffs?\\b.*\\bannounce"
+        - "\\bappoints?\\b"
+
+  - id: kottke
+    name: "kottke.org"
+    feed_url: https://feeds.kottke.org/main
+    feed_type: linkblog
+    quality_prior: 0.82
+    volume_budget: 0.40
+    exploration_floor: 0.08
+    category_priors:
+      culture: 1.00
+      default: 0.35
+    feed_weights:
+      essential: 0.45
+      culture: 1.00
+      serendipity: 0.25
+      default: 0.30
+
+  - id: letterboxd_journal
+    name: "Letterboxd Journal"
+    feed_url: https://letterboxd.com/journal/rss/
+    quality_prior: 0.35
+    volume_budget: 0.15
+    exploration_floor: 0.08
+    category_priors:
+      culture: 1.00
+      default: 0.35
+    feed_weights:
+      essential: 0.45
+      culture: 1.00
+      serendipity: 0.25
+      default: 0.30
+
+  - id: criterion_current
+    name: "The Criterion Collection — The Current"
+    feed_url: https://www.criterion.com/feeds/current
+    quality_prior: 0.42
+    volume_budget: 0.25
+    exploration_floor: 0.08
+    category_priors:
+      culture: 1.00
+      default: 0.35
+    feed_weights:
+      essential: 0.70
+      culture: 1.00
+      serendipity: 0.25
+      default: 0.30
+
+  - id: longreads
+    name: "Longreads"
+    feed_url: https://longreads.com/feed/
+    quality_prior: 0.74
+    volume_budget: 0.52
+    exploration_floor: 0.08
+    category_priors:
+      culture: 1.00
+      default: 0.35
+    feed_weights:
+      essential: 0.45
+      culture: 1.00
+      serendipity: 0.25
+      default: 0.30
+
+  - id: tedium
+    name: "Tedium"
+    feed_url: https://feed.tedium.co/
+    quality_prior: 0.94
+    volume_budget: 1
+    exploration_floor: 0.08
+    category_priors:
+      culture: 1.00
+      ideas_science: 0.80
+      default: 0.35
+    feed_weights:
+      essential: 0.70
+      ideas_science: 1.00
+      culture: 1.00
+      serendipity: 0.60
+      default: 0.30
+
+  - id: pure_invention
+    name: "Pure Invention"
+    feed_url: https://blog.pureinventionbook.com/feed
+    access: mixed
+    quality_prior: 0.76
+    volume_budget: 0.45
+    exploration_floor: 0.10
+    category_priors:
+      culture: 0.90
+      internet_culture: 0.90
+      games: 0.70
+      new_technology: 0.70
+      society: 0.65
+      default: 0.38
+    feed_weights:
+      essential: 0.58
+      ai_product: 0.42
+      games: 0.68
+      culture: 1.00
+      serendipity: 0.62
+      default: 0.32
+    hard_rules:
+      require_explicit_free_article: true
+      require_readable_article: true
+
+  - id: cant_get_much_higher
+    name: "Can't Get Much Higher"
+    feed_url: https://www.cantgetmuchhigher.com/feed
+    access: mixed
+    quality_prior: 0.74
+    volume_budget: 0.35
+    exploration_floor: 0.10
+    category_priors:
+      culture: 0.90
+      society: 0.82
+      business_economics: 0.62
+      wildcard: 0.60
+      default: 0.35
+    feed_weights:
+      essential: 0.52
+      ideas_science: 0.62
+      culture: 1.00
+      serendipity: 0.60
+      default: 0.30
+    hard_rules:
+      require_explicit_free_article: true
+      require_readable_article: true
+
+  - id: bandcamp_daily
+    name: "Bandcamp Daily"
+    feed_url: https://daily.bandcamp.com/feed
+    quality_prior: 0.45
+    volume_budget: 0.22
+    exploration_floor: 0.08
+    category_priors:
+      culture: 1.00
+      default: 0.35
+    feed_weights:
+      essential: 0.45
+      culture: 1.00
+      serendipity: 0.25
+      default: 0.30
+
+  - id: stereogum
+    name: "Stereogum"
+    feed_url: https://www.stereogum.com/feed/
+    quality_prior: 0.30
+    volume_budget: 0.10
+    exploration_floor: 0.08
+    category_priors:
+      culture: 1.00
+      default: 0.35
+    feed_weights:
+      essential: 0.10
+      culture: 1.00
+      serendipity: 0.25
+      default: 0.30
+    hard_rules:
+      drop_title_patterns:
+        - "\\bannounces? (new )?(tour|album|single)\\b"
+        - "\\bshares? new song\\b"
+        - "\\bwatch\\b.*\\bperform\\b"
+
+  - id: dutchnews
+    name: "DutchNews.nl"
+    feed_url: https://www.dutchnews.nl/feed/
+    enabled: false
+    quality_prior: 0.64
+    volume_budget: 1
+    exploration_floor: 0.08
+    category_priors:
+      default: 0.35
+    feed_weights:
+      essential: 0.45
+      serendipity: 0.25
+      default: 0.30
+
+  - id: nltimes
+    name: "NL Times"
+    feed_url: https://nltimes.nl/rss
+    enabled: false
+    quality_prior: 0.5
+    volume_budget: 1
+    exploration_floor: 0.08
+    category_priors:
+      default: 0.35
+    feed_weights:
+      essential: 0.25
+      serendipity: 0.25
+      default: 0.30
+    hard_rules:
+      drop_title_patterns:
+        - "\\b(stabbing|shooting|robbery|arrested|suspect)\\b"
+        - "\\b(Ajax|Feyenoord|PSV|Eredivisie|Formula 1)\\b"
+
+  # Retained as source-history only. Disabled because it is Dutch-language and
+  # partly paywalled; an RSS summary is not a substitute for a readable article.
+  - id: ftm
+    name: "Follow the Money"
+    feed_url: https://www.ftm.nl/feed
+    language: nl
+    enabled: false
+    access: mixed
+    quality_prior: 0.78
+    volume_budget: 1
+    exploration_floor: 0.10
+    category_priors:
+      ideas_science: 0.55
+      ai_product: 0.45
+      default: 0.45
+    feed_weights:
+      essential: 0.55
+      ideas_science: 0.50
+      serendipity: 0.40
+      default: 0.40
+    hard_rules:
+      content_type: analysis
+      drop_title_patterns:
+        - "^Podcast \\|"
+
+  - id: parool_amsterdam
+    name: "Het Parool — Amsterdam"
+    feed_url: https://www.parool.nl/amsterdam/rss.xml
+    language: nl
+    enabled: false
+    access: paywalled
+    quality_prior: 0.48
+    volume_budget: 0.3
+    exploration_floor: 0.08
+    category_priors:
+      default: 0.35
+    feed_weights:
+      essential: 0.15
+      serendipity: 0.25
+      default: 0.30
+    hard_rules:
+      drop_title_patterns:
+        - "\\b(Ajax|Feyenoord|PSV|Eredivisie)\\b"
+        - "\\b(steekpartij|schietpartij|overval|aangehouden|verdachte)\\b"
+
+  - id: nos_binnenland
+    name: "NOS Binnenland"
+    feed_url: https://feeds.nos.nl/nosnieuwsbinnenland
+    language: nl
+    enabled: false
+    quality_prior: 0.42
+    volume_budget: 0.4
+    exploration_floor: 0.08
+    category_priors:
+      default: 0.35
+    feed_weights:
+      essential: 0.10
+      serendipity: 0.25
+      default: 0.30
+    hard_rules:
+      drop_title_patterns:
+        - "\\b(aangehouden|verdachte|steekpartij|schietpartij|dodelijk ongeluk)\\b"
+        - "\\b(kabinet|Kamerdebat|peiling|coalitie)\\b"
+
+  - id: pod_latent_space
+    name: "Latent Space Podcast"
+    feed_url: https://api.substack.com/feed/podcast/1084089.rss
+    feed_type: podcast
+    quality_prior: 0.5
+    volume_budget: 0.25
+    exploration_floor: 0
+    category_priors:
+      ai_product: 1.00
+      default: 0.35
+    feed_weights:
+      essential: 0.25
+      ai_product: 1.00
+      serendipity: 0.25
+      default: 0.30
+
+  - id: pod_hard_fork
+    name: "Hard Fork"
+    feed_url: https://feeds.simplecast.com/l2i9YnTd
+    feed_type: podcast
+    quality_prior: 0.5
+    volume_budget: 1
+    exploration_floor: 0
+    category_priors:
+      ai_product: 1.00
+      default: 0.35
+    feed_weights:
+      essential: 0.25
+      ai_product: 1.00
+      serendipity: 0.25
+      default: 0.30
+
+  - id: pod_99pi
+    name: "99% Invisible"
+    feed_url: https://feeds.simplecast.com/BqbsxVfO
+    feed_type: podcast
+    quality_prior: 0.5
+    volume_budget: 0.25
+    exploration_floor: 0
+    category_priors:
+      culture: 1.00
+      ideas_science: 0.80
+      default: 0.35
+    feed_weights:
+      essential: 0.25
+      ideas_science: 1.00
+      culture: 1.00
+      serendipity: 0.25
+      default: 0.30
+
+# ---------------------------------------------------------------------------
+# hard_rules reference (stage 2 only -- deterministic, never about relevance)
+#
+#   drop_title_patterns:  [regex, ...]    case-insensitive, matched on title
+#   drop_url_patterns:    [regex, ...]
+#   drop_feed_categories: [string, ...]   e.g. [sports, deals]
+#   min_summary_chars:    0
+#   max_age_days:         14              overrides the global limit
+#   force_category:       games           pin every item to one category
+#   never_extract:        false           skip full-article fetching
+#   content_type:         analysis        freshness curve to use (see free-ranking.yaml)
+# ---------------------------------------------------------------------------
