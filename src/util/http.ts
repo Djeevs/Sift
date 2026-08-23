@@ -78,16 +78,27 @@ export function isPublicAddress(address: string): boolean {
   if (version === 4) {
     const octets = address.split('.').map(Number);
     if (octets.length !== 4 || octets.some((n) => !Number.isInteger(n) || n < 0 || n > 255)) return false;
-    const [a, b] = octets;
+    const [a, b, c] = octets as [number, number, number, number];
+    // Each reserved range is matched at its real prefix length. Three of these
+    // were written as /16 when IANA reserves only a /24, which blocked large
+    // amounts of ordinary public internet: 192.0.66/78/79.x is Automattic, so
+    // every WordPress.com-hosted source -- longreads, acoup.blog, nautil.us,
+    // stereogum -- failed to fetch with "blocked non-public address".
     return !(
-      a === 0 || a === 10 || a === 127 ||
-      (a === 100 && b! >= 64 && b! <= 127) ||
-      (a === 169 && b === 254) ||
-      (a === 172 && b! >= 16 && b! <= 31) ||
-      (a === 192 && b === 0) || (a === 192 && b === 168) ||
-      (a === 198 && (b === 18 || b === 19)) ||
-      (a === 198 && b === 51) || (a === 203 && b === 0) ||
-      a! >= 224
+      a === 0 ||                                  // 0.0.0.0/8      this network
+      a === 10 ||                                 // 10.0.0.0/8     private
+      a === 127 ||                                // 127.0.0.0/8    loopback
+      (a === 100 && b >= 64 && b <= 127) ||       // 100.64.0.0/10  CGNAT
+      (a === 169 && b === 254) ||                 // 169.254.0.0/16 link-local
+      (a === 172 && b >= 16 && b <= 31) ||        // 172.16.0.0/12  private
+      (a === 192 && b === 0 && c === 0) ||        // 192.0.0.0/24   IETF assignments
+      (a === 192 && b === 0 && c === 2) ||        // 192.0.2.0/24   TEST-NET-1
+      (a === 192 && b === 168) ||                 // 192.168.0.0/16 private
+      (a === 192 && b === 88 && c === 99) ||      // 192.88.99.0/24 6to4 relay
+      (a === 198 && (b === 18 || b === 19)) ||    // 198.18.0.0/15  benchmarking
+      (a === 198 && b === 51 && c === 100) ||     // 198.51.100.0/24 TEST-NET-2
+      (a === 203 && b === 0 && c === 113) ||      // 203.0.113.0/24 TEST-NET-3
+      a >= 224                                    // 224.0.0.0/4 multicast, 240/4 reserved
     );
   }
   if (version === 6) {
