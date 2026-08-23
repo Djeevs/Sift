@@ -44,6 +44,7 @@ import {
 } from '../onboarding/adoptSources.js';
 import { loadConfig } from '../config/index.js';
 import { ACTIONS, JobBusyError, UiJobRunner, type UiAction } from './jobs.js';
+import { readJobProgress, type JobProgress } from './progress.js';
 
 interface Draft {
   profileId: string;
@@ -529,6 +530,19 @@ export function humanProfileSummary(
   }<p class="hint">Nothing has been created yet. Approving below writes this reader’s private files on this Mac only.</p>`;
 }
 
+function progressHtml(progress: JobProgress): string {
+  if (!progress.staged || progress.stages.length === 0) return '';
+  const steps = progress.stages.map((stage) => `<li class="stage ${stage.state}">
+    <span class="stage-mark" aria-hidden="true">${stage.state === 'done' ? '✓' : stage.state === 'active' ? '●' : ''}</span>
+    <span class="stage-body"><strong>${escapeXml(stage.label)}</strong><span class="stage-hint">${escapeXml(stage.detail ?? stage.hint)}</span></span>
+  </li>`).join('');
+  return `<div class="progress" role="group" aria-label="Progress">
+    <div class="bar"><div class="bar-fill" style="width:${progress.percent}%"></div></div>
+    <p class="bar-label">${progress.completed} of ${progress.total} steps done</p>
+    <ol class="stages">${steps}</ol>
+  </div>`;
+}
+
 function page(title: string, body: string, options: { refresh?: number } = {}): string {
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -546,6 +560,14 @@ label{display:block;font-weight:650;margin-bottom:5px}.hint{font-size:13px;color
 .metric{font:700 25px/1.1 Georgia,serif}.metric-label{color:var(--muted);font-size:12px;margin-top:4px}.pill{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:3px 8px;font-size:12px;color:var(--muted)}.good{color:var(--accent)}.warning{color:var(--warn)}
 pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#161815;color:#e9efe9;border-radius:12px;padding:16px;max-height:460px;overflow:auto;font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace}.feed{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid var(--line)}.feed:first-child{border-top:0}.feed code{font-size:12px;overflow-wrap:anywhere}.section{margin-top:28px}.error{border-color:var(--warn);color:var(--warn)}
 .step{display:grid;grid-template-columns:34px 1fr;gap:12px}.step-number{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--accent2);font-weight:700}.step h2{margin-top:2px}.article-card h3{font:700 18px/1.3 Georgia,serif}.article-meta{font-size:12px;color:var(--muted);margin-bottom:8px}.rating{display:flex;gap:14px;flex-wrap:wrap;margin-top:16px}.rating label{font-weight:550}.rating input{margin-right:5px}details{border-top:1px solid var(--line);padding:14px 0}details:first-of-type{border-top:0}summary{cursor:pointer;font-weight:700}button:disabled,.button.disabled{opacity:.45;cursor:not-allowed;pointer-events:none}
+.progress{margin:0}.bar{height:8px;border-radius:999px;background:var(--accent2);overflow:hidden}.bar-fill{height:100%;background:var(--accent);border-radius:999px;transition:width .4s ease}.bar-label{margin:8px 0 16px;font-size:13px;color:var(--muted)}
+.stages{list-style:none;margin:0;padding:0}.stage{display:grid;grid-template-columns:26px 1fr;gap:10px;align-items:start;padding:9px 0;border-top:1px solid var(--line)}.stage:first-child{border-top:0}
+.stage-mark{width:20px;height:20px;margin-top:2px;border-radius:50%;display:grid;place-items:center;font-size:11px;border:1px solid var(--line);color:var(--card);background:var(--line)}
+.stage.done .stage-mark{background:var(--accent);border-color:var(--accent)}.stage.active .stage-mark{background:var(--card);border-color:var(--accent);color:var(--accent);animation:pulse 1.4s ease-in-out infinite}
+.stage-body{display:flex;flex-direction:column;gap:2px}.stage-hint{font-size:13px;color:var(--muted)}
+.stage.pending .stage-body strong{color:var(--muted);font-weight:600}.stage.active .stage-body strong{color:var(--accent)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+@media(prefers-reduced-motion:reduce){.stage.active .stage-mark{animation:none}.bar-fill{transition:none}}
 ul.plain{margin:0 0 4px;padding-left:20px}ul.plain li{margin-bottom:8px}ol.plain-steps{margin:0 0 16px;padding-left:20px}ol.plain-steps li{margin-bottom:8px}
 .medium-row{display:grid;grid-template-columns:1fr 200px;gap:10px;margin-bottom:8px}
 .pick{padding:14px 0;border-top:1px solid var(--line)}.pick:first-of-type{border-top:0}.pick h3{font:700 17px/1.3 Georgia,serif;margin:0 0 4px}.pick p{margin:0 0 4px}
@@ -847,101 +869,74 @@ export function createUiApp(options: UiAppOptions = {}): Hono {
     }
   });
 
-  app.get('/job/:id', (c) => {
-    const job = runner.get(c.req.param('id'));
-    if (!job) return c.html(errorPage('Job not found.'), 404);
-    const busy = c.req.query('busy') === '1';
-    const takes = ACTIONS[job.action]?.takes;
+  /** Everything the job page needs, so it can update without reloading. */
+  const jobView = (jobId: string) => {
+    const job = runner.get(jobId);
+    if (!job) return null;
+    const profile = profileSummary(projectRoot, job.profileId);
+    const progress = readJobProgress(profile.databasePath, {
+      staged: job.action === 'pipeline' || job.action === 'pipeline_dry',
+      startedAt: new Date(job.startedAt).getTime(),
+    });
     const elapsed = Math.round((Date.now() - new Date(job.startedAt).getTime()) / 1000);
-    const banner = busy && job.status === 'running'
-      ? `<div class="card"><strong>This is already running.</strong> Sift runs one job at a time for each reader, so it picked up where you left off rather than starting a second one. When it finishes you can start the next step.</div>`
-      : '';
+    const takes = ACTIONS[job.action]?.takes;
     const status = job.status === 'running'
-      ? `Running for ${elapsed < 90 ? `${elapsed} seconds` : `${Math.round(elapsed / 60)} minutes`}${takes ? ` · usually takes ${escapeXml(takes)}` : ''}. You can leave this page open or come back later.`
+      ? `Running for ${elapsed < 90 ? `${elapsed} seconds` : `${Math.round(elapsed / 60)} minutes`}${takes ? ` · usually takes ${takes}` : ''}.`
       : job.status === 'succeeded'
         ? 'Finished successfully.'
-        : `Stopped with exit code ${job.exitCode ?? 1}. The output below says why.`;
-    return c.html(page(job.label, `<p class="eyebrow">${job.status}</p><h1>${escapeXml(job.label)}</h1><p class="lede">${status}</p>${banner}<pre>${escapeXml(job.output || 'Starting…')}</pre><div class="actions"><a class="button secondary" href="/profile/${encodeURIComponent(job.profileId)}">Back to ${escapeXml(job.profileId)}</a>${job.status === 'running' ? `<form method="post" action="/job/${encodeURIComponent(job.id)}/stop" data-confirm="Stop this run? Nothing already saved is lost.">${hiddenCsrf(csrf)}<button class="danger" type="submit">Stop this run</button></form>` : ''}</div>`, { refresh: job.status === 'running' ? 3 : undefined }));
-  });
-
-  /**
-   * Review and adopt the sources the reader's assistant suggested.
-   *
-   * This is the step the onboarding dossier exists for. Before it, a suggested
-   * writer or publication could only nudge the prior of a source the reader had
-   * already configured by hand, so a suggestion for someone new did nothing.
-   *
-   * The approval is explicit on purpose: the assistant proposes, the reader
-   * confirms, and only then does Sift write -- to an additive per-reader file,
-   * never to the shared source list.
-   */
-  const loadAdoptable = (id: string): { items: AdoptableSource[]; discoveredAt: string | null } => {
-    const directory = profileDirectory(id, projectRoot);
-    const reportPath = resolve(directory, 'source-discovery.json');
-    if (!existsSync(reportPath)) return { items: [], discoveredAt: null };
-    const report = JSON.parse(readFileSync(reportPath, 'utf8')) as {
-      discovered_at?: string;
-      results?: Parameters<typeof adoptableSources>[0];
-    };
-    const config = loadConfig({ configDir: directory, reload: true });
-    return {
-      items: adoptableSources(report.results ?? [], config),
-      discoveredAt: report.discovered_at ?? null,
-    };
+        : `Stopped with exit code ${job.exitCode ?? 1}. The details below say why.`;
+    return { job, progress, status };
   };
 
-  app.get('/profile/:id/sources', (c) => {
-    try {
-      const id = validateProfileId(c.req.param('id'));
-      const { items, discoveredAt } = loadAdoptable(id);
-      const available = items.filter((item) => !item.alreadyConfigured);
-      const already = items.filter((item) => item.alreadyConfigured);
-      const saved = c.req.query('added');
-
-      if (items.length === 0) {
-        return c.html(page('Suggested sources', `<p class="eyebrow">Suggested sources</p><h1>Nothing to review yet.</h1><p class="lede">Run “Find sources your assistant suggested” on the dashboard first. Sift checks each suggestion really publishes a feed before offering it here.</p><a class="button secondary" href="/profile/${id}">Back to ${escapeXml(id)}</a>`));
-      }
-
-      const card = (item: AdoptableSource, index: number) => `<article class="card article-card">
-        <input type="hidden" name="id_${index}" value="${escapeXml(item.id)}">
-        <div class="check"><input id="pick_${index}" name="pick_${index}" type="checkbox"${item.disposition === 'known_favorite' || item.role === 'direct_follow' ? ' checked' : ''}><label for="pick_${index}"><strong>${escapeXml(item.name)}</strong> <span class="muted">${escapeXml(item.domain)}</span></label></div>
-        <p class="muted">${escapeXml(item.reason)}</p>
-        ${item.sampleTitles.length > 0 ? `<p class="hint">Recently published: ${item.sampleTitles.map((title) => escapeXml(title)).join(' · ')}</p>` : ''}
-        ${item.caveats.length > 0 ? `<p class="hint">Your assistant’s caution: ${item.caveats.map((caveat) => escapeXml(caveat)).join('; ')}</p>` : ''}
-        <p class="hint">Sift will read this ${item.role === 'direct_follow' ? 'regularly' : item.role === 'selective' ? 'selectively' : item.role === 'wildcard' ? 'rarely, as a wildcard' : 'only as a discovery source'}.</p>
-      </article>`;
-
-      return c.html(page('Suggested sources', `<p class="eyebrow">Suggested sources</p><h1>Your assistant found these.</h1><p class="lede">Sift checked that each one really publishes a feed. Tick the ones to follow — you can remove any of them later, and your existing sources are untouched.</p>
-      ${saved ? `<div class="card good"><strong>Added ${escapeXml(saved)} source${saved === '1' ? '' : 's'}.</strong> They will be included from the next run.</div>` : ''}
-      ${discoveredAt ? `<p class="hint">Checked ${escapeXml(discoveredAt.slice(0, 10))}.</p>` : ''}
-      ${available.length > 0 ? `<form class="stack" method="post" action="/profile/${id}/sources">${hiddenCsrf(csrf)}<input type="hidden" name="count" value="${available.length}">${available.map(card).join('')}<div class="actions"><button type="submit">Follow the ticked sources</button><a class="button secondary" href="/profile/${id}">Back without adding</a></div></form>` : '<div class="card"><h2>Everything suggested is already being read.</h2></div>'}
-      ${already.length > 0 ? `<section class="section card"><h2>Already in your list</h2><p class="muted">${already.map((item) => escapeXml(item.name)).join(', ')}</p></section>` : ''}`));
-    } catch (error) {
-      return c.html(errorPage(error), 404);
-    }
+  // Polled by the job page. Same-origin, so the page's own CSP allows it.
+  app.get('/job/:id/progress', (c) => {
+    const view = jobView(c.req.param('id'));
+    if (!view) return c.json({ error: 'not found' }, 404);
+    return c.json({
+      status: view.job.status,
+      statusText: view.status,
+      progressHtml: progressHtml(view.progress),
+      output: view.job.output || 'Starting…',
+      done: view.job.status !== 'running',
+    });
   });
 
-  app.post('/profile/:id/sources', async (c) => {
-    try {
-      const id = validateProfileId(c.req.param('id'));
-      const body = await parseForm(c);
-      const count = Number(field(body, 'count'));
-      if (!Number.isInteger(count) || count < 0 || count > 200) throw new Error('This page expired. Reload and try again.');
-      const { items } = loadAdoptable(id);
-      const byId = new Map(items.map((item) => [item.id, item]));
-      const chosen: AdoptableSource[] = [];
-      for (let index = 0; index < count; index += 1) {
-        if (!checked(body, `pick_${index}`)) continue;
-        const item = byId.get(field(body, `id_${index}`));
-        if (item) chosen.push(item);
-      }
-      if (chosen.length === 0) return c.redirect(`/profile/${encodeURIComponent(id)}/sources`, 303);
-      const directory = profileDirectory(id, projectRoot);
-      const outcome = adoptSources(directory, loadConfig({ configDir: directory, reload: true }), chosen);
-      return c.redirect(`/profile/${encodeURIComponent(id)}/sources?added=${outcome.added.length}`, 303);
-    } catch (error) {
-      return c.html(errorPage(error), 400);
-    }
+  app.get('/job/:id', (c) => {
+    const view = jobView(c.req.param('id'));
+    if (!view) return c.html(errorPage('That run no longer exists. It may have finished before Sift restarted.'), 404);
+    const { job, progress, status } = view;
+    const busy = c.req.query('busy') === '1';
+    const banner = busy && job.status === 'running'
+      ? '<div class="card"><strong>This is already running.</strong> Sift runs one job at a time for each reader, so it brought you here rather than starting a second one. When it finishes you can start the next step.</div>'
+      : '';
+    // The log is the least useful thing on this page for most readers, so it is
+    // present but folded away rather than being the whole page.
+    return c.html(page(job.label, `<p class="eyebrow" id="job-state">${escapeXml(job.status)}</p><h1>${escapeXml(job.label)}</h1><p class="lede" id="job-status">${escapeXml(status)}</p>${banner}
+      <div class="card" id="job-progress">${progressHtml(progress)}</div>
+      <details class="section"><summary>Technical output</summary><pre id="job-output">${escapeXml(job.output || 'Starting…')}</pre></details>
+      <div class="actions"><a class="button secondary" href="/profile/${encodeURIComponent(job.profileId)}">Back to ${escapeXml(job.profileId)}</a>${job.status === 'running' ? `<form method="post" action="/job/${encodeURIComponent(job.id)}/stop" data-confirm="Stop this run? Nothing already saved is lost.">${hiddenCsrf(csrf)}<button class="danger" type="submit">Stop this run</button></form>` : ''}</div>
+      ${job.status === 'running' ? `<script>
+      (function(){
+        var id=${JSON.stringify(job.id)};
+        // Updates in place rather than reloading, so the page does not jump
+        // while the reader is reading it.
+        function tick(){
+          fetch('/job/'+encodeURIComponent(id)+'/progress',{headers:{accept:'application/json'}})
+            .then(function(r){return r.ok?r.json():null})
+            .then(function(d){
+              if(!d)return;
+              document.getElementById('job-state').textContent=d.status;
+              document.getElementById('job-status').textContent=d.statusText;
+              document.getElementById('job-progress').innerHTML=d.progressHtml;
+              document.getElementById('job-output').textContent=d.output;
+              if(d.done){location.reload();return}
+              setTimeout(tick,2000);
+            })
+            .catch(function(){setTimeout(tick,4000)});
+        }
+        setTimeout(tick,2000);
+      })();
+      </script>` : ''}`));
   });
 
   app.get('/profile/:id/calibration', (c) => {
