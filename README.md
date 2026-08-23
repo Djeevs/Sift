@@ -79,9 +79,34 @@ WHY DID THIS DISAPPEAR
 
 ## Quick start
 
+### If you have never used a terminal
+
+You need three things, in this order. It takes about fifteen minutes.
+
+1. **Install Node.js.** Go to <https://nodejs.org>, download the version marked
+   **LTS**, open the installer, and accept the defaults. Sift needs version 22
+   or newer; the LTS download is always newer than that.
+2. **Open Sift.** In Finder, open the Sift folder, then the `mac` folder, and
+   double-click **Sift.command**.
+
+   The first time, macOS will refuse to open it — it says the file is from an
+   unidentified developer. This is expected for any app not bought from the App
+   Store. To get past it: **right-click** (or Control-click) `Sift.command`,
+   choose **Open**, then choose **Open** again in the dialog. You only have to
+   do this once.
+
+   The first run downloads what Sift needs and takes a minute or two. Leave the
+   black Terminal window open — closing it stops Sift.
+3. **Set up a reader in the browser** that opens. The screens walk you through
+   it. You will need a free ChatGPT account for the first step, and an OpenAI
+   API key for the third — Sift's dashboard explains how to get one.
+
+Sift runs entirely on your Mac. Nothing you read is sent anywhere except the
+article text Sift shows the AI service you choose.
+
 ### Mac: Sift Home
 
-The simplest Mac path is the local Sift Home interface:
+If you already have Node.js and a terminal open:
 
 ```bash
 npm run ui

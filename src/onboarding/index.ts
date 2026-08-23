@@ -193,6 +193,40 @@ function formatZod(error: z.ZodError): string {
   return error.issues.map((issue) => `  - ${issue.path.join('.') || '(root)'}: ${issue.message}`).join('\n');
 }
 
+/**
+ * Find the JSON object inside whatever the reader pasted.
+ *
+ * A chat reply is prose with an object somewhere in it — "Here's your profile:
+ * {...} Let me know if you'd like changes." Requiring a clean paste made the
+ * obvious action (select all, copy) fail on the first screen of onboarding, and
+ * the resulting error was a JSON parser message. Scanning for the first
+ * balanced object is string- and escape-aware so a brace inside a quoted value
+ * cannot end the scan early.
+ */
+export function extractJsonObject(input: string): string | null {
+  const start = input.indexOf('{');
+  if (start < 0) return null;
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = start; i < input.length; i += 1) {
+    const char = input[i]!;
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (char === '\\') escaped = true;
+      else if (char === '"') inString = false;
+      continue;
+    }
+    if (char === '"') inString = true;
+    else if (char === '{') depth += 1;
+    else if (char === '}') {
+      depth -= 1;
+      if (depth === 0) return input.slice(start, i + 1);
+    }
+  }
+  return null;
+}
+
 export function parseDossier(raw: string): OnboardingDossier {
   let source = raw.trim();
   const fenced = /^```(?:json)?\s*([\s\S]*?)\s*```$/i.exec(source);
@@ -201,7 +235,17 @@ export function parseDossier(raw: string): OnboardingDossier {
   try {
     data = JSON.parse(source);
   } catch (error) {
-    throw new Error(`The onboarding dossier is not valid JSON: ${(error as Error).message}`);
+    // Fall back to the object embedded in a longer reply before giving up.
+    const embedded = extractJsonObject(source);
+    if (embedded) {
+      try {
+        data = JSON.parse(embedded);
+      } catch {
+        throw new Error(`The onboarding dossier is not valid JSON: ${(error as Error).message}`);
+      }
+    } else {
+      throw new Error(`The onboarding dossier is not valid JSON: ${(error as Error).message}`);
+    }
   }
   const current = onboardingDossierSchema.safeParse(data);
   if (current.success) return current.data;

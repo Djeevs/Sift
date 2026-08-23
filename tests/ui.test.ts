@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { PROJECT_ROOT } from '../src/config/index.js';
 import { initDb } from '../src/db/index.js';
-import { createUiApp } from '../src/ui/app.js';
+import { createUiApp, slugifyReaderName, plainError } from '../src/ui/app.js';
 import { redactUiOutput } from '../src/ui/jobs.js';
 
 const dossier = {
@@ -75,7 +75,28 @@ describe('Mac local UI', () => {
     const onboarding = await app.request('/onboarding');
     const html = await onboarding.text();
     expect(html).toContain('Copy ChatGPT prompt');
-    expect(html).toContain('ChatGPT JSON dossier');
+    // The two inputs the reader has to fill in, asserted by field name rather
+    // than by label text so wording can be improved without breaking the test.
+    expect(html).toContain('name="profile_id"');
+    expect(html).toContain('name="dossier"');
+    // The name field must not impose an id format on the reader: "Alice Smith"
+    // is the obvious thing to type and used to fail HTML pattern validation.
+    expect(html).not.toContain('pattern="[a-z0-9][a-z0-9_-]{0,63}"');
+  });
+
+  it('accepts a reader name typed the way a person would write it', () => {
+    expect(slugifyReaderName('Alice Smith')).toBe('alice-smith');
+    expect(slugifyReaderName('  Renée O’Brien  ')).toBe('renee-o-brien');
+    expect(slugifyReaderName('alice')).toBe('alice');
+    expect(() => slugifyReaderName('!!!')).toThrow(/at least one letter or number/);
+  });
+
+  it('explains failures without showing raw parser output first', () => {
+    const jsonError = plainError(new Error('The onboarding dossier is not valid JSON: Unexpected token'));
+    expect(jsonError.headline).toContain('does not look like the profile');
+    expect(jsonError.detail).toContain('starts with {');
+    // Anything unrecognised still reaches the reader rather than being swallowed.
+    expect(plainError(new Error('disk on fire')).detail).toBe('disk on fire');
   });
 
   it('previews without writing, then creates only after explicit approval', async () => {
@@ -115,7 +136,7 @@ describe('Mac local UI', () => {
     expect(dashboard.status).toBe(200);
     const dashboardHtml = await dashboard.text();
     expect(dashboardHtml).toContain('Publish and subscribe');
-    expect(dashboardHtml).toContain('Waiting for ranked content');
+    expect(dashboardHtml).toContain('Waiting for your first articles');
   });
 
   it('stores an AI key privately without rendering it or leaving it in job output', async () => {

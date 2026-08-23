@@ -87,6 +87,23 @@ const dossier: OnboardingDossier = {
 };
 
 describe('reader onboarding', () => {
+  // A reader pastes the whole chat reply, because that is what "copy the
+  // answer" means. Requiring a surgically clean paste turned the first screen
+  // of onboarding into a JSON parser error message.
+  it('finds the dossier inside a conversational reply', () => {
+    const reply = `Sure! Here is your reading profile:\n\n${JSON.stringify(dossier)}\n\nLet me know if you want me to adjust anything — happy to help!`;
+    expect(parseDossier(reply).version).toBe(3);
+  });
+
+  it('is not fooled by a brace inside a quoted value', () => {
+    const tricky = { ...dossier, reading_goal: 'Find things } like this {' };
+    expect(parseDossier(`Here you go:\n${JSON.stringify(tricky)}\nDone.`).reading_goal).toBe('Find things } like this {');
+  });
+
+  it('still rejects a paste with no object in it at all', () => {
+    expect(() => parseDossier('I could not complete that request.')).toThrow(/not valid JSON/);
+  });
+
   it('parses a fenced dossier and compiles only ranking fields', () => {
     const parsed = parseDossier(`\`\`\`json\n${JSON.stringify(dossier)}\n\`\`\``);
     const taste = compileTasteProfile(parsed);

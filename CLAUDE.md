@@ -2,8 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-This checkout has **no Git history** — no diff, no revert. Do not assume a
-destructive edit can be recovered. Back up any file before rewriting it.
+This checkout is a Git repository (`main`, private remote `origin`). Use
+`git diff` and `git log`; changes are recoverable. Private files — `.env`,
+`worker/wrangler.toml`, `worker/.dev.vars`, `data/`, and non-example profiles —
+are gitignored and must stay that way.
 
 Read `docs/SESSION-HANDOFF.md` (short) for operational state: profiles,
 deployment, private files, known gaps. Read `README.md` only in ranges — see
@@ -253,22 +255,22 @@ Read by range, not whole. Regenerate this index after editing README with:
 | Section | Range | Lines |
 | --- | --- | ---: |
 | How it works | `sed -n 20,79p README.md` | 60 |
-| Quick start | `sed -n 80,313p README.md` | 234 |
-| Commands | `sed -n 314,368p README.md` | 55 |
-| Spend is a system constraint | `sed -n 369,437p README.md` | 69 |
-| Clustering, and what it is for | `sed -n 438,484p README.md` | 47 |
-| Measuring what the funnel throws away | `sed -n 485,507p README.md` | 23 |
-| The nine config files | `sed -n 508,652p README.md` | 145 |
-| Prompts | `sed -n 653,670p README.md` | 18 |
-| Explicit feedback from Reeder | `sed -n 671,706p README.md` | 36 |
-| Learning | `sed -n 707,728p README.md` | 22 |
-| Diagnostics | `sed -n 729,750p README.md` | 22 |
-| Costs | `sed -n 751,792p README.md` | 42 |
-| Which database am I using? | `sed -n 793,812p README.md` | 20 |
-| Deployment | `sed -n 813,950p README.md` | 138 |
-| Design decisions worth knowing | `sed -n 951,1014p README.md` | 64 |
-| Repository layout | `sed -n 1015,1044p README.md` | 30 |
-| Status | `sed -n 1045,1068p README.md` | 24 |
+| Quick start | `sed -n 80,338p README.md` | 259 |
+| Commands | `sed -n 339,393p README.md` | 55 |
+| Spend is a system constraint, not a metric | `sed -n 394,462p README.md` | 69 |
+| Clustering, and what it is for | `sed -n 463,509p README.md` | 47 |
+| Measuring what the funnel throws away | `sed -n 510,532p README.md` | 23 |
+| The nine config files | `sed -n 533,677p README.md` | 145 |
+| Prompts | `sed -n 678,695p README.md` | 18 |
+| Explicit feedback from Reeder | `sed -n 696,731p README.md` | 36 |
+| Learning | `sed -n 732,753p README.md` | 22 |
+| Diagnostics | `sed -n 754,775p README.md` | 22 |
+| Costs | `sed -n 776,817p README.md` | 42 |
+| Which database am I using? | `sed -n 818,837p README.md` | 20 |
+| Deployment | `sed -n 838,975p README.md` | 138 |
+| Design decisions worth knowing | `sed -n 976,1039p README.md` | 64 |
+| Repository layout | `sed -n 1040,1069p README.md` | 30 |
+| Status | `sed -n 1070,1093p README.md` | 24 |
 
 Operational counts in README (source count, volume, cost, cache-hit rates) have
 drifted from the database. Read them from `npm run stats` / `npm run budget`,
