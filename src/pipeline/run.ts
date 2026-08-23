@@ -20,6 +20,7 @@ import { resolveAuditSamples } from './audit.js';
 import { recordStageCost } from './costs.js';
 import { startJob, setStatus } from './journal.js';
 import { logger } from '../util/log.js';
+import { withLock } from '../util/lock.js';
 import { runClassics } from '../classics/index.js';
 
 const log = logger('pipeline');
@@ -66,10 +67,23 @@ export interface PipelineResult {
   spendUsd: number;
 }
 
+/**
+ * Guarded here rather than at each entry point, so every caller is covered:
+ * the dashboard button, the scheduler, `npm run pipeline`, and cron. Two runs
+ * against one database would both pay for the same Terra evaluations.
+ */
 export async function runPipeline(
   db: Db,
   config: AppConfig,
   opts: PipelineOptions = {},
+): Promise<PipelineResult> {
+  return withLock(config.env.dbPath, 'pipeline', () => runPipelineLocked(db, config, opts));
+}
+
+async function runPipelineLocked(
+  db: Db,
+  config: AppConfig,
+  opts: PipelineOptions,
 ): Promise<PipelineResult> {
   const job = startJob(db, 'pipeline');
   const ai = new AiClient(config, db, job.id);
