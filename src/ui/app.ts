@@ -802,7 +802,7 @@ export function createUiApp(options: UiAppOptions = {}): Hono {
       </div></section>
 
       <section class="section card"><h2>Your feed links</h2><p class="muted">Paste any of these into a reading app to subscribe. Each link contains a private key — treat it like a password and do not post it anywhere.</p>${localPublishing && !serverUp ? '<p class="warning">Start the feed server first (step 4) or these links will return nothing.</p>' : ''}${feedRows}</section>
-      <section class="section card"><h2>Advanced</h2><p class="muted">Stored at ${escapeXml(profile.databasePath)}</p><div class="actions"><a class="button secondary" href="${escapeXml(`${profile.publicUrl}/admin${token}`)}">Open diagnostics</a></div></section>`));
+      <section class="section card"><h2>Advanced</h2><p class="muted">Stored at ${escapeXml(profile.databasePath)}</p><div class="actions"><form method="post" action="/profile/${id}/action">${hiddenCsrf(csrf)}<input type="hidden" name="action" value="doctor"><button class="secondary" type="submit"${running ? ' disabled title="A run is already in progress"' : ''}>${escapeXml(ACTIONS.doctor.label)}</button></form><a class="button secondary" href="${escapeXml(`${profile.publicUrl}/admin${token}`)}">Open diagnostics</a></div></section>`));
     } catch (error) {
       return c.html(errorPage(error), 404);
     }
@@ -843,7 +843,7 @@ export function createUiApp(options: UiAppOptions = {}): Hono {
       const id = validateProfileId(c.req.param('id'));
       const body = await parseForm(c);
       const action = field(body, 'action') as UiAction;
-      if (!['db_setup', 'pipeline_dry', 'pipeline', 'source_discover'].includes(action)) throw new Error('Unsupported action.');
+      if (!['db_setup', 'pipeline_dry', 'pipeline', 'source_discover', 'doctor'].includes(action)) throw new Error('Unsupported action.');
       if (action === 'pipeline' && !profileSummary(projectRoot, id).aiReady) {
         throw new Error('Configure an AI provider and API key before running a real recommendation update.');
       }
@@ -949,7 +949,7 @@ export function createUiApp(options: UiAppOptions = {}): Hono {
       const db = new DatabaseSync(profile.databasePath, { readOnly: true });
       const items = rankedCalibrationItems(db);
       db.close();
-      if (items.length === 0) throw new Error('No ranked recommendations yet. Run Update recommendations first, then read a few results.');
+      if (items.length === 0) throw new Error(`Sift has not chosen any articles yet. Press “${ACTIONS.pipeline.label}” on the dashboard first, then come back once you have read a few.`);
       const previous = new Map<string, RankedCalibrationLabel>();
       const calibrationPath = resolve(directory, 'calibration.json');
       if (existsSync(calibrationPath)) {

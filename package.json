@@ -66,6 +66,7 @@
     "share-check": "node --import tsx src/cli/share-check.ts",
     "share-package": "npm run share-check && npm pack --cache /tmp/sift-share-npm-cache",
     "sources:discover": "tsx src/cli/source-discover.ts",
+    "sources:adopt": "tsx src/cli/source-adopt.ts",
     "start": "node dist/server/main.js",
     "stats": "tsx src/cli/stats.ts",
     "ui": "tsx src/cli/ui.ts",
