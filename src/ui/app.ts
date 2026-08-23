@@ -37,6 +37,12 @@ import {
   type RankedCalibrationAnswers,
   type RankedCalibrationLabel,
 } from '../onboarding/calibration.js';
+import {
+  adoptSources,
+  adoptableSources,
+  type AdoptableSource,
+} from '../onboarding/adoptSources.js';
+import { loadConfig } from '../config/index.js';
 import { UiJobRunner, type UiAction } from './jobs.js';
 
 interface Draft {
@@ -753,7 +759,8 @@ export function createUiApp(options: UiAppOptions = {}): Hono {
       ${!profile.databaseExists ? `<form method="post" action="/profile/${id}/action">${hiddenCsrf(csrf)}<input type="hidden" name="action" value="db_setup"><button type="submit">Set up storage</button></form>` : ''}
       <form method="post" action="/profile/${id}/action">${hiddenCsrf(csrf)}<input type="hidden" name="action" value="pipeline_dry"><button class="secondary" type="submit">Test the setup — free</button></form>
       <form method="post" action="/profile/${id}/action" data-confirm="Start a real run now? This spends a small amount with your AI service.">${hiddenCsrf(csrf)}<input type="hidden" name="action" value="pipeline"><button type="submit"${profile.aiReady ? '' : ' disabled title="Configure an AI provider first"'}>Find articles now — uses AI credit</button></form>
-      ${profile.sourceCandidates > 0 ? `<form method="post" action="/profile/${id}/action">${hiddenCsrf(csrf)}<input type="hidden" name="action" value="source_discover"><button class="secondary" type="submit">Check suggested sources</button></form>` : ''}
+      ${profile.sourceCandidates > 0 ? `<form method="post" action="/profile/${id}/action">${hiddenCsrf(csrf)}<input type="hidden" name="action" value="source_discover"><button class="secondary" type="submit">Find sources your assistant suggested</button></form>` : ''}
+      ${profile.validatedFeeds > 0 ? `<a class="button" href="/profile/${id}/sources">Review ${profile.validatedFeeds} suggested source${profile.validatedFeeds === 1 ? '' : 's'} →</a>` : ''}
       </div>${latest ? `<p class="hint">Latest: <a href="/job/${latest.id}">${escapeXml(latest.label)} — ${latest.status}</a></p>` : ''}</div></section>
 
       <section class="section card step"><div class="step-number">3</div><div><h2>Teach it what you liked <span class="pill">optional</span></h2>${profile.placements > 0
@@ -826,6 +833,86 @@ export function createUiApp(options: UiAppOptions = {}): Hono {
     const job = runner.get(c.req.param('id'));
     if (!job) return c.html(errorPage('Job not found.'), 404);
     return c.html(page(job.label, `<p class="eyebrow">${job.status}</p><h1>${escapeXml(job.label)}</h1><p class="lede">Reader ${escapeXml(job.profileId)} · started ${escapeXml(job.startedAt.replace('T', ' ').slice(0, 19))}</p><pre>${escapeXml(job.output || 'Starting…')}</pre><div class="actions"><a class="button secondary" href="/profile/${encodeURIComponent(job.profileId)}">Back to dashboard</a></div>`, { refresh: job.status === 'running' ? 2 : undefined }));
+  });
+
+  /**
+   * Review and adopt the sources the reader's assistant suggested.
+   *
+   * This is the step the onboarding dossier exists for. Before it, a suggested
+   * writer or publication could only nudge the prior of a source the reader had
+   * already configured by hand, so a suggestion for someone new did nothing.
+   *
+   * The approval is explicit on purpose: the assistant proposes, the reader
+   * confirms, and only then does Sift write -- to an additive per-reader file,
+   * never to the shared source list.
+   */
+  const loadAdoptable = (id: string): { items: AdoptableSource[]; discoveredAt: string | null } => {
+    const directory = profileDirectory(id, projectRoot);
+    const reportPath = resolve(directory, 'source-discovery.json');
+    if (!existsSync(reportPath)) return { items: [], discoveredAt: null };
+    const report = JSON.parse(readFileSync(reportPath, 'utf8')) as {
+      discovered_at?: string;
+      results?: Parameters<typeof adoptableSources>[0];
+    };
+    const config = loadConfig({ configDir: directory, reload: true });
+    return {
+      items: adoptableSources(report.results ?? [], config),
+      discoveredAt: report.discovered_at ?? null,
+    };
+  };
+
+  app.get('/profile/:id/sources', (c) => {
+    try {
+      const id = validateProfileId(c.req.param('id'));
+      const { items, discoveredAt } = loadAdoptable(id);
+      const available = items.filter((item) => !item.alreadyConfigured);
+      const already = items.filter((item) => item.alreadyConfigured);
+      const saved = c.req.query('added');
+
+      if (items.length === 0) {
+        return c.html(page('Suggested sources', `<p class="eyebrow">Suggested sources</p><h1>Nothing to review yet.</h1><p class="lede">Run “Find sources your assistant suggested” on the dashboard first. Sift checks each suggestion really publishes a feed before offering it here.</p><a class="button secondary" href="/profile/${id}">Back to ${escapeXml(id)}</a>`));
+      }
+
+      const card = (item: AdoptableSource, index: number) => `<article class="card article-card">
+        <input type="hidden" name="id_${index}" value="${escapeXml(item.id)}">
+        <div class="check"><input id="pick_${index}" name="pick_${index}" type="checkbox"${item.disposition === 'known_favorite' || item.role === 'direct_follow' ? ' checked' : ''}><label for="pick_${index}"><strong>${escapeXml(item.name)}</strong> <span class="muted">${escapeXml(item.domain)}</span></label></div>
+        <p class="muted">${escapeXml(item.reason)}</p>
+        ${item.sampleTitles.length > 0 ? `<p class="hint">Recently published: ${item.sampleTitles.map((title) => escapeXml(title)).join(' · ')}</p>` : ''}
+        ${item.caveats.length > 0 ? `<p class="hint">Your assistant’s caution: ${item.caveats.map((caveat) => escapeXml(caveat)).join('; ')}</p>` : ''}
+        <p class="hint">Sift will read this ${item.role === 'direct_follow' ? 'regularly' : item.role === 'selective' ? 'selectively' : item.role === 'wildcard' ? 'rarely, as a wildcard' : 'only as a discovery source'}.</p>
+      </article>`;
+
+      return c.html(page('Suggested sources', `<p class="eyebrow">Suggested sources</p><h1>Your assistant found these.</h1><p class="lede">Sift checked that each one really publishes a feed. Tick the ones to follow — you can remove any of them later, and your existing sources are untouched.</p>
+      ${saved ? `<div class="card good"><strong>Added ${escapeXml(saved)} source${saved === '1' ? '' : 's'}.</strong> They will be included from the next run.</div>` : ''}
+      ${discoveredAt ? `<p class="hint">Checked ${escapeXml(discoveredAt.slice(0, 10))}.</p>` : ''}
+      ${available.length > 0 ? `<form class="stack" method="post" action="/profile/${id}/sources">${hiddenCsrf(csrf)}<input type="hidden" name="count" value="${available.length}">${available.map(card).join('')}<div class="actions"><button type="submit">Follow the ticked sources</button><a class="button secondary" href="/profile/${id}">Back without adding</a></div></form>` : '<div class="card"><h2>Everything suggested is already being read.</h2></div>'}
+      ${already.length > 0 ? `<section class="section card"><h2>Already in your list</h2><p class="muted">${already.map((item) => escapeXml(item.name)).join(', ')}</p></section>` : ''}`));
+    } catch (error) {
+      return c.html(errorPage(error), 404);
+    }
+  });
+
+  app.post('/profile/:id/sources', async (c) => {
+    try {
+      const id = validateProfileId(c.req.param('id'));
+      const body = await parseForm(c);
+      const count = Number(field(body, 'count'));
+      if (!Number.isInteger(count) || count < 0 || count > 200) throw new Error('This page expired. Reload and try again.');
+      const { items } = loadAdoptable(id);
+      const byId = new Map(items.map((item) => [item.id, item]));
+      const chosen: AdoptableSource[] = [];
+      for (let index = 0; index < count; index += 1) {
+        if (!checked(body, `pick_${index}`)) continue;
+        const item = byId.get(field(body, `id_${index}`));
+        if (item) chosen.push(item);
+      }
+      if (chosen.length === 0) return c.redirect(`/profile/${encodeURIComponent(id)}/sources`, 303);
+      const directory = profileDirectory(id, projectRoot);
+      const outcome = adoptSources(directory, loadConfig({ configDir: directory, reload: true }), chosen);
+      return c.redirect(`/profile/${encodeURIComponent(id)}/sources?added=${outcome.added.length}`, 303);
+    } catch (error) {
+      return c.html(errorPage(error), 400);
+    }
   });
 
   app.get('/profile/:id/calibration', (c) => {

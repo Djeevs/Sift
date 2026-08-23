@@ -10,6 +10,8 @@ import {
   modelsFileSchema,
   pipelineFileSchema,
   budgetFileSchema,
+  sourcesOverlayFileSchema,
+  type SourcesFile,
   classicsFileSchema,
   type BudgetFile,
   type ModeConfig,
@@ -179,6 +181,8 @@ export function loadEnv(): Env {
 export interface AppConfig {
   env: Env;
   sources: SourceConfig[];
+  /** How an approved assistant suggestion becomes a configured source. */
+  adoption: SourcesFile['adoption'];
   taste: TasteProfile;
   models: ModelsConfig;
   free: FreeRankingConfig;
@@ -266,6 +270,9 @@ export function loadConfig(options: { configDir?: string; reload?: boolean } = {
     pipeline: file('pipeline.yaml'),
     budget: file('budget.yaml'),
     classics: file('classics.yaml'),
+    // Additive, and only ever inside a profile: sources the reader adopted from
+    // assistant suggestions. Absent for the shared checkout.
+    sourcesOverlay: resolve(configDir, 'sources.added.yaml'),
     prompts: resolve(PROJECT_ROOT, 'prompts'),
   };
 
@@ -282,6 +289,13 @@ export function loadConfig(options: { configDir?: string; reload?: boolean } = {
   };
 
   const sourcesFile = parseOrThrow('sources.yaml', sourcesFileSchema, raw.sources.data);
+  const adopted = existsSync(paths.sourcesOverlay)
+    ? parseOrThrow(
+        'sources.added.yaml',
+        sourcesOverlayFileSchema,
+        readYaml(paths.sourcesOverlay, 'sources.added.yaml').data,
+      ).sources
+    : [];
   const taste = parseOrThrow('taste-profile.yaml', tasteProfileSchema, raw.taste.data);
   const models = parseOrThrow('models.yaml', modelsFileSchema, raw.models.data);
   const free = parseOrThrow('free-ranking.yaml', freeRankingFileSchema, raw.free.data);
@@ -304,8 +318,16 @@ export function loadConfig(options: { configDir?: string; reload?: boolean } = {
   // --- Sources: apply defaults, derive what the schema deliberately leaves off
   const defaults = sourcesFile.defaults;
   const seen = new Set<string>();
-  const sources: SourceConfig[] = sourcesFile.sources.map((s) => {
-    if (seen.has(s.id)) throw new Error(`Duplicate source id in sources.yaml: ${s.id}`);
+  const baseIds = new Set(sourcesFile.sources.map((s) => s.id));
+  const sources: SourceConfig[] = [...sourcesFile.sources, ...adopted].map((s) => {
+    if (seen.has(s.id)) {
+      // Naming the file matters: the reader can delete the adopted entry, but
+      // must not be told to edit the shared list they did not change.
+      const where = baseIds.has(s.id) && adopted.some((a) => a.id === s.id)
+        ? 'sources.added.yaml duplicates an id already in sources.yaml'
+        : 'Duplicate source id in sources.yaml';
+      throw new Error(`${where}: ${s.id}`);
+    }
     seen.add(s.id);
     const feedType = s.feed_type ?? defaults.feed_type;
     const access = s.access ?? defaults.access;
@@ -421,6 +443,7 @@ export function loadConfig(options: { configDir?: string; reload?: boolean } = {
   const config: AppConfig = {
     env: loadEnv(),
     sources,
+    adoption: sourcesFile.adoption,
     taste,
     models,
     free,

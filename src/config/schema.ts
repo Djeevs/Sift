@@ -103,7 +103,56 @@ export const sourcesFileSchema = z.object({
     })
     .default({}),
   sources: z.array(sourceSchema).min(1),
+  /**
+   * How an assistant-suggested source is translated into a configured one when
+   * the reader approves it.
+   *
+   * These decide how much opportunity a newly adopted source gets, so they are
+   * editorial values and belong here rather than in the adoption code. The
+   * numbers are deliberately cautious: a source nobody has read yet has no
+   * evidence behind it, and `disposition`/`role` are the assistant's guesses.
+   * An adopted entry records its resolved values explicitly, so changing these
+   * never silently re-rates a source already in a reader's list.
+   */
+  adoption: z
+    .object({
+      quality_prior: z
+        .object({
+          known_favorite: probability.default(0.62),
+          recommended: probability.default(0.56),
+          exploratory: probability.default(0.5),
+        })
+        .default({}),
+      // Volume budget is where `role` does its work: a wildcard should be able
+      // to surprise the reader without being able to fill the edition.
+      volume_budget: z
+        .object({
+          direct_follow: z.number().min(0).max(2).default(1),
+          selective: z.number().min(0).max(2).default(0.6),
+          discovery_only: z.number().min(0).max(2).default(0.35),
+          wildcard: z.number().min(0).max(2).default(0.25),
+        })
+        .default({}),
+    })
+    .default({}),
 });
+
+export type SourcesFile = z.output<typeof sourcesFileSchema>;
+
+/**
+ * Sources a reader adopted from assistant suggestions.
+ *
+ * A separate file, merged onto `sources.yaml` rather than replacing it. Profile
+ * config files are whole-file overrides, so writing an adopted source into a
+ * profile copy of `sources.yaml` would freeze that reader's list at the moment
+ * of adoption and silently withhold every later change to the shared one.
+ */
+export const sourcesOverlayFileSchema = z.object({
+  version: z.number().int().default(1),
+  sources: z.array(sourceSchema).default([]),
+});
+
+export type SourcesOverlayFile = z.output<typeof sourcesOverlayFileSchema>;
 
 // ---------------------------------------------------------------------------
 // taste-profile.yaml
