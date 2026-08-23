@@ -91,6 +91,14 @@ describe('Mac local UI', () => {
     expect(() => slugifyReaderName('!!!')).toThrow(/at least one letter or number/);
   });
 
+  it('turns a zod issue array into a sentence naming the field', () => {
+    const zodish = JSON.stringify([{ code: 'too_small', minimum: 10, path: ['positive_examples', 0, 'description'] }]);
+    const { headline, detail } = plainError(new Error(zodish));
+    expect(headline).toContain('could not build a profile');
+    expect(detail).toContain('positive_examples → 0 → description');
+    expect(detail).not.toContain('too_small');
+  });
+
   it('explains failures without showing raw parser output first', () => {
     const jsonError = plainError(new Error('The onboarding dossier is not valid JSON: Unexpected token'));
     expect(jsonError.headline).toContain('does not look like the profile');

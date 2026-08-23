@@ -167,14 +167,25 @@ export const tasteProfileSchema = z.object({
     )
     .default([]),
   style_references: z
-    .array(z.object({ name: z.string().min(1), guidance: z.string().min(10) }))
+    // Same mismatch as the example descriptions below: `guidance` is the
+    // dossier's `style_references[].qualities`, bounded at min(5) upstream.
+    .array(z.object({ name: z.string().min(1), guidance: z.string().min(5) }))
     .default([]),
   /** Concrete calibration examples complement abstract traits without becoming hard filters. */
+  /**
+   * `description` is copied verbatim from the dossier's
+   * `examples[].title_or_description`, which the onboarding contract bounds at
+   * min(5). Requiring 10 here made the two schemas disagree about the same
+   * field: a dossier naming a short title -- "Piranesi", 8 characters -- passed
+   * onboarding validation and then failed profile compilation, after the reader
+   * had already completed every step. A title is a legitimate description of an
+   * example, so the bound follows the upstream contract rather than the reverse.
+   */
   positive_examples: z
-    .array(z.object({ description: z.string().min(10), reason: z.string().min(5) }))
+    .array(z.object({ description: z.string().min(5), reason: z.string().min(5) }))
     .default([]),
   negative_examples: z
-    .array(z.object({ description: z.string().min(10), reason: z.string().min(5) }))
+    .array(z.object({ description: z.string().min(5), reason: z.string().min(5) }))
     .default([]),
   reader_preferences: readerPreferencesSchema.default({}),
   /** Assistant suggestions are evidence, not source definitions. Only matches

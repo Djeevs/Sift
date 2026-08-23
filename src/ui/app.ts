@@ -19,6 +19,7 @@ import {
   createProfile,
   atomicWrite,
   parseDossier,
+  compileTasteProfile,
   profileDirectory,
   readOnboardingState,
   renderProfilePreview,
@@ -361,6 +362,19 @@ export function plainError(error: unknown): { headline: string; detail: string }
   if (/Configure an AI provider/i.test(raw)) {
     return { headline: 'Sift needs an AI service before it can find articles.', detail: 'Open step 1 on the dashboard and connect one. The free test run works without it.' };
   }
+  // zod serialises its issues as a JSON array. That is unreadable for the
+  // audience most likely to see it, so name the field and say what to do.
+  if (raw.trimStart().startsWith('[') && /"code"|"path"/.test(raw)) {
+    const paths = [...raw.matchAll(/"path":\s*\[([^\]]*)\]/g)]
+      .map((match) => match[1]!.replace(/["\s]/g, '').split(',').filter(Boolean).join(' → '))
+      .filter(Boolean);
+    return {
+      headline: 'Sift could not build a profile from that answer.',
+      detail: paths.length > 0
+        ? `The problem is in: ${paths.join('; ')}. Ask ChatGPT to regenerate its answer, or edit that part before pasting again.`
+        : 'Ask ChatGPT to produce the whole answer again, then paste it.',
+    };
+  }
   return { headline: 'Something needs attention.', detail: raw };
 }
 
@@ -627,6 +641,11 @@ export function createUiApp(options: UiAppOptions = {}): Hono {
       const skipped = checked(body, 'skip_preferences');
       draft.preferences = skipped ? defaultReaderPreferences() : preferencesFromForm(body);
       draft.preferenceStatus = skipped ? 'defaults' : 'completed';
+      // Compile here, purely to validate. createProfile compiles for real at the
+      // final click, and a failure there lands after the reader has approved --
+      // which is exactly where a short example title used to strand them. This
+      // writes nothing; it just moves the error before the point of no return.
+      compileTasteProfile(draft.dossier, draft.preferences);
       const preview = renderProfilePreview(draft.dossier, draft.preferences, draft.preferenceStatus);
       return c.html(page('Approve profile', `<p class="eyebrow">Step 3 of 3</p><h1>Here is what Sift will do for you.</h1><p class="lede">Check this reads like you. Nothing has been saved yet — no files, no feeds, no account anywhere.</p><div class="card">${humanProfileSummary(draft.dossier, draft.preferences, draft.preferenceStatus === 'defaults')}<details><summary>See the full technical profile</summary><pre>${escapeXml(preview)}</pre></details></div><form class="card section" method="post" action="/onboarding/create">${hiddenCsrf(csrf)}<input type="hidden" name="draft_id" value="${escapeXml(field(body, 'draft_id'))}"><div class="check field"><input id="approval" name="approval" value="approve" type="checkbox" required><label for="approval">This looks right — create this reader on my Mac.</label></div><button type="submit">Create reader →</button></form>`));
     } catch (error) {

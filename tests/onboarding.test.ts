@@ -104,6 +104,42 @@ describe('reader onboarding', () => {
     expect(() => parseDossier('I could not complete that request.')).toThrow(/not valid JSON/);
   });
 
+  /**
+   * A real dossier listed "Piranesi" as a liked book. The dossier schema allows
+   * a 5-character title, `compileTasteProfile` copies it straight into
+   * `positive_examples[].description`, and the taste-profile schema demanded 10
+   * — so onboarding validated the paste, then failed compiling the profile,
+   * after the reader had finished every step. This asserts the two schemas
+   * agree for every field one copies into the other, rather than re-testing the
+   * single title that happened to expose it.
+   */
+  it('compiles a dossier whose strings all sit at their allowed minimum', () => {
+    const minimal = {
+      ...dossier,
+      examples: [
+        { kind: 'explicit_positive', title_or_description: 'Piran', reason: 'Liked.', confidence: 0.8 },
+        { kind: 'explicit_negative', title_or_description: 'Meh12', reason: 'Dull.', confidence: 0.8 },
+      ],
+      style_references: [
+        { name: 'A', relationship: 'medium_reference', qualities: 'Funny', confidence: 0.9 },
+      ],
+    };
+    const parsed = parseDossier(JSON.stringify(minimal));
+    // Compilation must not be stricter than the contract onboarding accepted.
+    const taste = compileTasteProfile(parsed);
+    expect(taste.positive_examples[0]!.description).toBe('Piran');
+    expect(taste.negative_examples[0]!.description).toBe('Meh12');
+    expect(taste.style_references[0]!.guidance).toBe('Funny');
+  });
+
+  it('accepts a real short title such as Piranesi end to end', () => {
+    const withBook = {
+      ...dossier,
+      examples: [{ kind: 'explicit_positive', title_or_description: 'Piranesi', reason: 'Atmosphere and momentum.', confidence: 0.86 }],
+    };
+    expect(compileTasteProfile(parseDossier(JSON.stringify(withBook))).positive_examples[0]!.description).toBe('Piranesi');
+  });
+
   it('parses a fenced dossier and compiles only ranking fields', () => {
     const parsed = parseDossier(`\`\`\`json\n${JSON.stringify(dossier)}\n\`\`\``);
     const taste = compileTasteProfile(parsed);
