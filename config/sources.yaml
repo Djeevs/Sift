@@ -20,6 +20,14 @@
 # these values -- both are combined at scoring time.
 # ---------------------------------------------------------------------------
 
+# Asking the deep model which sources suit this reader. Its output is a list of
+# publications with reasons, far longer than the single-article verdict that
+# models.yaml sizes max_output_tokens for -- at that limit the reply truncated
+# and produced no candidates at all.
+suggestion:
+  max_candidates: 12
+  max_output_tokens: 4000
+
 defaults:
   feed_type: article
   language: en

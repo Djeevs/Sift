@@ -206,6 +206,10 @@ export interface AppConfig {
   sources: SourceConfig[];
   /** How an approved assistant suggestion becomes a configured source. */
   adoption: SourcesFile['adoption'];
+  /** File-level source defaults, for code that creates new sources. */
+  sourcesDefaults: SourcesFile['defaults'];
+  /** Limits for model-proposed sources. */
+  suggestion: SourcesFile['suggestion'];
   taste: TasteProfile;
   models: ModelsConfig;
   free: FreeRankingConfig;
@@ -496,6 +500,8 @@ export function loadConfig(options: { configDir?: string; reload?: boolean } = {
     env: loadEnv(),
     sources,
     adoption: sourcesFile.adoption,
+    sourcesDefaults: sourcesFile.defaults,
+    suggestion: sourcesFile.suggestion,
     taste,
     models,
     free,

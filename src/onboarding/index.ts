@@ -30,6 +30,8 @@ export const sourceCandidateSchema = z.object({
   domain: z.string().default(''),
   disposition: z.enum(['known_favorite', 'recommended', 'exploratory', 'avoid']),
   role: z.enum(['direct_follow', 'selective', 'discovery_only', 'wildcard']).optional(),
+  /** Which lanes this source suits. Absent means the configured default. */
+  lanes: z.array(z.enum(['feeds', 'briefing', 'classics'])).min(1).optional(),
   content_areas: z.array(z.string().min(2)).default([]),
   caveats: z.array(z.string().min(2)).default([]),
   reason: z.string().min(5),

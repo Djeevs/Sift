@@ -32,7 +32,8 @@ describe('terminal and web UI stay in step', () => {
       'onboard',          // create a reader
       'db:setup',         // set up storage
       'pipeline',         // find articles (SIFT_DRY_RUN=1 for the free test)
-      'sources:discover', // find suggested sources
+      'sources:suggest',  // ask Sift which sources suit this reader
+      'sources:discover', // check each one really publishes a feed
       'sources:adopt',    // follow suggested sources
       'calibrate',        // rate what you read
       'reader:delete',    // remove a reader
@@ -42,6 +43,28 @@ describe('terminal and web UI stay in step', () => {
       'push',             // publish to Cloudflare
     ]) {
       expect(scripts[script], `missing npm script: ${script}`).toBeTruthy();
+    }
+  });
+
+  /**
+   * The commands survived; the web routes did not. A refactor of the job page
+   * replaced a slice of app.ts spanning from the job route to the calibration
+   * route, and the source-adoption routes sat between them — so they were
+   * deleted silently, and every test still passed because the CLI half kept
+   * working. Parity is only real if both halves are checked.
+   */
+  it('serves a web route for every capability that has one', () => {
+    const app = readFileSync(resolve(PROJECT_ROOT, 'src/ui/app.ts'), 'utf8');
+    for (const route of [
+      "'/onboarding'",              // create a reader
+      "'/profile/:id'",             // the dashboard
+      "'/profile/:id/action'",      // storage, test run, real run, discovery
+      "'/profile/:id/sources'",     // review and follow suggested sources
+      "'/profile/:id/calibration'", // rate what you read
+      "'/profile/:id/delete'",      // remove a reader
+      "'/api/status'",              // machine-readable state
+    ]) {
+      expect(app, `no route for ${route}`).toContain(route);
     }
   });
 

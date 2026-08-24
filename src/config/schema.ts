@@ -133,6 +133,19 @@ export const sourcesFileSchema = z.object({
    * An adopted entry records its resolved values explicitly, so changing these
    * never silently re-rates a source already in a reader's list.
    */
+  /**
+   * Asking the deep model which sources suit this reader.
+   *
+   * The output is a list of publications with reasons, which is far longer
+   * than the single-article verdict `models.yaml` sizes `max_output_tokens`
+   * for -- the first run returned truncated JSON and no candidates at all.
+   */
+  suggestion: z
+    .object({
+      max_candidates: z.number().int().min(1).max(40).default(12),
+      max_output_tokens: z.number().int().positive().default(4000),
+    })
+    .default({}),
   adoption: z
     .object({
       quality_prior: z
