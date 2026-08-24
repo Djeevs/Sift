@@ -1,7 +1,8 @@
 import { Hono } from 'hono';
 import type { Db } from '../db/index.js';
 import type { AppConfig } from '../config/index.js';
-import { loadFeedItems, renderAtomFeed, renderJsonFeed, renderRssFeed } from './renderFeed.js';
+import { allFeeds } from '../config/index.js';
+import { renderFeedDocuments } from './renderFeed.js';
 import { recordOpen } from '../feedback/opens.js';
 import { adminRoutes } from './admin.js';
 import { logger } from '../util/log.js';
@@ -16,7 +17,7 @@ const log = logger('server');
 export function createApp(db: Db, config: AppConfig): Hono {
   const app = new Hono();
   const token = config.env.accessToken;
-  const allFeeds = [...config.feeds, config.classics.feed];
+  const feeds = allFeeds(config);
 
   /** Feeds and admin are token-protected; /open is not (see below). */
   const authorised = (provided: string | undefined): boolean => {
@@ -25,12 +26,12 @@ export function createApp(db: Db, config: AppConfig): Hono {
   };
 
   app.get('/', (c) => {
-    const feeds = allFeeds.map((f) => {
+    const urls = feeds.map((f) => {
       const suffix = token && token !== 'change-me-please' ? `?t=${encodeURIComponent(token)}` : '';
       return `${config.env.publicUrl}/feed/${f.slug}.xml${suffix}`;
     });
     return c.text(
-      ['Sift — a private editorial desk.', '', 'Feeds:', ...feeds.map((u) => `  ${u}`), '', 'Admin: /admin'].join('\n'),
+      ['Sift — a private editorial desk.', '', 'Feeds:', ...urls.map((u) => `  ${u}`), '', 'Admin: /admin'].join('\n'),
     );
   });
 
@@ -51,27 +52,16 @@ export function createApp(db: Db, config: AppConfig): Hono {
 
     if (!authorised(c.req.query('t'))) return c.text('Not found', 404);
 
-    const feed = allFeeds.find((f) => f.slug === slug || f.id === slug);
+    const feed = feeds.find((f) => f.slug === slug || f.id === slug);
     if (!feed) return c.notFound();
 
-    const items = loadFeedItems(
-      db,
-      feed.id,
-      feed.id === config.classics.feed.id
-        ? config.classics.publishing.feed_length
-        : config.final.final_ranking.feed_length,
-    );
-    const options = {
+    const documents = renderFeedDocuments(db, config, feed, {
       tracked: config.final.final_ranking.tracked_links,
       publicUrl: config.env.publicUrl,
       accessToken: token,
-    };
+    });
 
-    const body = ext === 'rss'
-      ? renderRssFeed(db, config, feed, items, options)
-      : ext === 'json'
-        ? renderJsonFeed(db, config, feed, items, options)
-        : renderAtomFeed(db, config, feed, items, options);
+    const body = ext === 'rss' ? documents.rss : ext === 'json' ? documents.json : documents.atom;
 
     return c.body(body, 200, {
       'content-type': ext === 'rss'

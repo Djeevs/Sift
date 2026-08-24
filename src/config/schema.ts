@@ -1,14 +1,17 @@
 import { z } from 'zod';
 
 /**
- * Schemas for the six human-editable config files:
+ * Schemas for the human-editable config files:
  *
  *   sources.yaml        who we read, and how much opportunity each source gets
  *   taste-profile.yaml  who the reader is
  *   models.yaml         stage 4 / stage 5 models, semantic provider
  *   free-ranking.yaml   stage 2 rules, stage 3 free score
  *   final-ranking.yaml  stage 4/5 gating, stage 6 portfolio construction
- *   feed-config.yaml    the six generated feeds
+ *   feed-config.yaml    the six always-on generated feeds
+ *   classics.yaml       the optional archival lane
+ *   briefing.yaml       the optional twice-daily digest
+ *   budget.yaml         spend limits, operating mode, Terra allocation
  *   pipeline.yaml       mechanics: fetch, extract, cluster, feedback, learning
  *
  * Validation is strict on shape but tolerant of extra keys, so notes can live in
@@ -74,6 +77,21 @@ export const sourceSchema = z.object({
     })
     .optional(),
 
+  /**
+   * Which lanes this source may reach.
+   *
+   * The three lanes want different things, so tying them to one list was wrong.
+   * A high-volume wire is too noisy for a feed but ideal in a ten-line digest;
+   * a slow essay site is the reverse. `classics` is different in kind — an
+   * archive to search rather than a feed to poll — so a source opts into it
+   * only when its back catalogue is worth mining.
+   *
+   * Defaults to feeds and briefing: the lanes a conventional RSS source serves.
+   * Narrowing this never changes what is ingested or evaluated, only where an
+   * item may surface, so an item can still inform clustering and saturation for
+   * a lane it cannot itself appear in.
+   */
+  lanes: z.array(z.enum(['feeds', 'briefing', 'classics'])).min(1).optional(),
   /** How likely an item from here deserves deeper inspection (stage 3/4). */
   quality_prior: probability.optional(),
   /** How much attention this source may request. Compresses its decay curve. */
@@ -95,6 +113,7 @@ export const sourcesFileSchema = z.object({
       enabled: z.boolean().default(true),
       access: z.enum(['free', 'mixed', 'paywalled']).default('free'),
       item_kind: z.enum(['article', 'product']).default('article'),
+      lanes: z.array(z.enum(['feeds', 'briefing', 'classics'])).min(1).default(['feeds', 'briefing']),
       quality_prior: probability.default(0.55),
       volume_budget: z.number().min(0).max(2).default(1),
       exploration_floor: probability.default(0.08),
@@ -170,8 +189,26 @@ export const paywallPolicySchema = z.enum(['free_only', 'subscribed_publications
 export const freshnessBalanceSchema = z.enum(['timely', 'balanced', 'evergreen']);
 export const preferredMediumSchema = z.enum(['text', 'video', 'podcast', 'any']);
 
+/**
+ * The two editorial lanes a reader may decline.
+ *
+ * Both are additive rather than corrective: switching one off removes a feed,
+ * it never changes how the other feeds rank. That is why they are safe to
+ * default on and safe to turn off at any time — no threshold needs
+ * recalibrating either way.
+ */
+export const optionalFeedsSchema = z
+  .object({
+    /** The twice-daily digest of the top items, as one article per slot. */
+    briefing: z.boolean().default(true),
+    /** One exceptional older article a day. */
+    classics: z.boolean().default(true),
+  })
+  .default({});
+
 export const readerPreferencesSchema = z.object({
   version: z.literal(1).default(1),
+  optional_feeds: optionalFeedsSchema,
   attention_budget: attentionBudgetSchema.default('15_30'),
   article_length: articleLengthSchema.default('long_when_exceptional'),
   paywall_policy: paywallPolicySchema.default('free_only'),
@@ -665,6 +702,52 @@ export const classicsFileSchema = z.object({
 });
 
 // ---------------------------------------------------------------------------
+// briefing.yaml
+// ---------------------------------------------------------------------------
+
+/** "HH:MM", 24-hour, in the reader's local time. */
+export const briefingTimeSchema = z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'expected a 24-hour "HH:MM" time');
+
+export const briefingFileSchema = z.object({
+  version: z.number().int().default(1),
+  enabled: z.boolean().default(true),
+  /** Reuses the feed contract, so the briefing is scored by `scoreForFeed`. */
+  feed: feedConfigSchema,
+  /** Editions kept in the rendered feed. Two a day, so 60 is a month. */
+  feed_length: z.number().int().positive().default(60),
+  schedule: z
+    .object({
+      times: z.array(briefingTimeSchema).min(1).default(['08:00', '20:00']),
+      /** `local` (host clock) or an IANA zone name. */
+      timezone: z.string().min(1).default('local'),
+      max_lateness_minutes: z.number().int().positive().default(360),
+      /** How often the scheduler checks whether a slot has come due. */
+      check_interval_minutes: z.number().int().positive().default(5),
+    })
+    .default({}),
+  selection: z
+    .object({
+      items: z.number().int().positive().default(10),
+      min_items: z.number().int().positive().default(4),
+      window_hours: z.number().positive().default(14),
+      max_age_hours: z.number().positive().default(36),
+      max_per_cluster: z.number().int().positive().default(1),
+      max_per_source: z.number().int().positive().default(3),
+      repeat_across_editions: z.boolean().default(false),
+    })
+    .default({}),
+  summary: z
+    .object({
+      max_chars: z.number().int().min(40).default(220),
+      sources: z
+        .array(z.enum(['publisher', 'why_it_surfaced']))
+        .min(1)
+        .default(['publisher', 'why_it_surfaced']),
+    })
+    .default({}),
+});
+
+// ---------------------------------------------------------------------------
 // pipeline.yaml
 // ---------------------------------------------------------------------------
 
@@ -775,6 +858,8 @@ export const pipelineFileSchema = z.object({
 // ---------------------------------------------------------------------------
 
 export type SourceConfig = z.output<typeof sourceSchema> & {
+  /** Always resolved by the loader, from the source or the file defaults. */
+  lanes: Array<'feeds' | 'briefing' | 'classics'>;
   feed_type: 'article' | 'podcast' | 'linkblog';
   language: string;
   enabled: boolean;
@@ -796,6 +881,8 @@ export type FinalRankingConfig = z.output<typeof finalRankingFileSchema>;
 export type FeedConfig = z.output<typeof feedConfigSchema>;
 export type FeedFileConfig = z.output<typeof feedFileSchema>;
 export type ClassicsConfig = z.output<typeof classicsFileSchema>;
+export type BriefingConfig = z.output<typeof briefingFileSchema>;
+export type OptionalFeeds = z.output<typeof optionalFeedsSchema>;
 export type PipelineConfig = z.output<typeof pipelineFileSchema>;
 export type FreshnessCurve = z.output<typeof freshnessCurveSchema>;
 

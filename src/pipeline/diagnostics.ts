@@ -233,6 +233,54 @@ export interface FeedStat {
   publishedTotal: number;
 }
 
+export interface BriefingStat {
+  localDay: string;
+  slot: string;
+  label: string;
+  items: number;
+  candidates: number;
+  publishedAt: string;
+  /** Minutes between the slot's time and when it was actually built. */
+  lateMinutes: number;
+}
+
+/**
+ * Recent briefing editions.
+ *
+ * Separate from `feedStats` because the briefing intentionally writes no
+ * `published_feed_items` rows -- listing it there would report a permanent zero
+ * and read as a broken feed rather than as a differently-shaped one.
+ *
+ * `lateMinutes` is the number worth watching: consistently high means the Mac
+ * is asleep at 08:00, and editions are being skipped rather than delivered.
+ */
+export function briefingStats(db: Db, config: AppConfig, limit = 10): BriefingStat[] {
+  return db
+    .all<{
+      local_day: string;
+      slot: string;
+      slot_label: string;
+      item_count: number;
+      candidates: number;
+      scheduled_for: number;
+      published_at: number;
+    }>(
+      `SELECT local_day, slot, slot_label, item_count, candidates, scheduled_for, published_at
+       FROM briefing_editions WHERE feed_id = :feed
+       ORDER BY published_at DESC LIMIT :limit`,
+      { feed: config.briefing.feed.id, limit },
+    )
+    .map((row) => ({
+      localDay: row.local_day,
+      slot: row.slot,
+      label: row.slot_label,
+      items: row.item_count,
+      candidates: row.candidates,
+      publishedAt: new Date(row.published_at).toISOString(),
+      lateMinutes: Math.round((row.published_at - row.scheduled_for) / 60_000),
+    }));
+}
+
 export function feedStats(db: Db, config: AppConfig): FeedStat[] {
   const today = dayKey(Date.now());
   return config.feeds.map((feed) => ({
@@ -338,6 +386,21 @@ export interface ItemDetail {
   cheap: Record<string, unknown> | null;
   /** Stage 5. */
   deep: Record<string, unknown> | null;
+  /**
+   * Stage 7. Which briefings carried this item, and the summary each showed.
+   *
+   * Separate from `routing` because a briefing line is not a feed placement --
+   * it has no final_ranking_decisions row and no threshold. Without this,
+   * "why did this reach me?" had no answer for an article the reader met on
+   * line three of the morning digest.
+   */
+  briefings: Array<{
+    local_day: string;
+    slot: string;
+    rank_position: number;
+    score: number;
+    summary_source: string;
+  }>;
   /** Stage 6, one row per feed with every adjustment that moved the score. */
   routing: Array<{
     feed_id: string;
@@ -395,6 +458,13 @@ export function itemDetail(db: Db, _config: AppConfig, itemId: string): ItemDeta
               exploration_slot, estimated_minutes, reason
        FROM final_ranking_decisions
        WHERE item_id = :id ORDER BY final_score DESC`,
+      { id: itemId },
+    ),
+    briefings: db.all(
+      `SELECT be.local_day, be.slot, bei.rank_position, bei.score, bei.summary_source
+       FROM briefing_edition_items bei
+       JOIN briefing_editions be ON be.id = bei.edition_id
+       WHERE bei.item_id = :id ORDER BY be.published_at DESC`,
       { id: itemId },
     ),
     attention: db.get(`SELECT * FROM attention_estimates WHERE item_id = :id`, { id: itemId }) ?? null,

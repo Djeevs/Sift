@@ -10,6 +10,8 @@ import {
   resolveHome,
   feedFileSchema,
   classicsFileSchema,
+  briefingFileSchema,
+  tasteProfileSchema,
   modelsFileSchema,
   readerPreferencesSchema,
   budgetFileSchema,
@@ -215,7 +217,57 @@ function preferencesFromForm(body: Record<string, string | File>): ReaderPrefere
     writing_voices: splitList(field(body, 'writing_voices')),
     disliked_styles: splitList(field(body, 'disliked_styles')),
     medium_preferences: mediumPreferencesFromRows(body),
+    // Checkboxes, so an unticked box sends nothing. Both are rendered pre-ticked
+    // and read as "on unless explicitly unticked", which is the same default the
+    // schema and config/*.yaml use -- three places that must not disagree about
+    // whether a reader who did nothing gets these feeds.
+    optional_feeds: {
+      briefing: checked(body, 'optional_briefing'),
+      classics: checked(body, 'optional_classics'),
+    },
   });
+}
+
+/**
+ * The two optional feeds, explained rather than named.
+ *
+ * A checkbox labelled "Classics" tells a first-time reader nothing, and the
+ * cost of guessing wrong is a feed they never open or one they never knew they
+ * could have had. Each box says what arrives, how often, and that it can be
+ * changed later.
+ */
+function optionalFeedsHtml(proposed: ReaderPreferences['optional_feeds']): string {
+  const rows = [
+    {
+      name: 'optional_briefing',
+      on: proposed.briefing,
+      title: 'The Briefing — twice a day',
+      body:
+        'One short article at 8am and 8pm: the ten things worth knowing since the last one, ' +
+        'each a headline, a link and a summary in the publisher’s own words. Chosen by the same ' +
+        'judgement as everything else, so it is ten things relevant to you rather than ten ' +
+        'things that happened. Costs nothing extra to run, and never takes an article away from ' +
+        'your other feeds.',
+    },
+    {
+      name: 'optional_classics',
+      on: proposed.classics,
+      title: 'Sift Classics — at most one a day',
+      body:
+        'One exceptional older article — at least a year old, often much more — chosen for ' +
+        'timeless writing, obsessive expertise and irresistible rabbit holes rather than for ' +
+        'being new. Most days there is nothing good enough and nothing arrives. This one does ' +
+        'use a little AI credit, because each candidate is read in full before it is offered.',
+    },
+  ];
+  return rows
+    .map(
+      (row) =>
+        `<div class="check field"><input id="${row.name}" name="${row.name}" type="checkbox"${row.on ? ' checked' : ''}>` +
+        `<label for="${row.name}"><strong>${escapeXml(row.title)}</strong><br>` +
+        `<span class="muted">${escapeXml(row.body)}</span></label></div>`,
+    )
+    .join('');
 }
 
 function option(value: string, label: string, selected: string): string {
@@ -327,14 +379,54 @@ function profileSummary(projectRoot: string, home: string, profileId: string): P
   };
 }
 
+/**
+ * The feeds this reader can actually subscribe to.
+ *
+ * Reads YAML directly rather than going through loadConfig, because the panel
+ * lists every reader while loadConfig resolves the one the environment selects.
+ * That means the optional-lane gating has to be repeated here -- so it is done
+ * the same way, off the same two files, and a reader who declined the briefing
+ * must not be shown a briefing URL that will serve them an empty feed.
+ */
 function feedSlugs(projectRoot: string, home: string, profileId: string): Array<{ title: string; slug: string }> {
   const directory = profileDirectory(profileId, home);
   const configPath = (name: string) => existsSync(resolve(directory, name))
     ? resolve(directory, name)
     : resolve(projectRoot, 'config', name);
   const feeds = feedFileSchema.parse(parseYaml(readFileSync(configPath('feed-config.yaml'), 'utf8'))).feeds;
-  const classics = classicsFileSchema.parse(parseYaml(readFileSync(configPath('classics.yaml'), 'utf8'))).feed;
-  return [...feeds, classics].map((feed) => ({ title: feed.title, slug: feed.slug }));
+
+  /**
+   * An optional lane whose config cannot be read is treated as switched off,
+   * not as a fatal error.
+   *
+   * feedSlugs feeds the whole dashboard, so throwing here replaces every panel
+   * -- including the ones that would explain the problem -- with one ENOENT
+   * message, which is the failure mode `listen()` in runtime.ts exists to
+   * avoid. A reader missing an optional feed from the list can still set up
+   * storage, run the pipeline and subscribe to the six that matter.
+   */
+  const optionalLane = <T>(name: string, parse: (data: unknown) => T): T | null => {
+    try {
+      return parse(parseYaml(readFileSync(configPath(name), 'utf8')));
+    } catch {
+      return null;
+    }
+  };
+  const classics = optionalLane('classics.yaml', (data) => classicsFileSchema.parse(data));
+  const briefing = optionalLane('briefing.yaml', (data) => briefingFileSchema.parse(data));
+
+  // A reader mid-onboarding has no taste profile yet; both lanes default on,
+  // exactly as they would once the profile is written.
+  const tastePath = resolve(directory, 'taste-profile.yaml');
+  const optional = existsSync(tastePath)
+    ? tasteProfileSchema.parse(parseYaml(readFileSync(tastePath, 'utf8'))).reader_preferences.optional_feeds
+    : { briefing: true, classics: true };
+
+  return [
+    ...feeds,
+    ...(classics?.enabled && optional.classics ? [classics.feed] : []),
+    ...(briefing?.enabled && optional.briefing ? [briefing.feed] : []),
+  ].map((feed) => ({ title: feed.title, slug: feed.slug }));
 }
 
 /**
@@ -567,6 +659,23 @@ export function humanProfileSummary(
   if (favourites > 0 || avoid > 0) {
     bullets.push(`Noted ${favourites} publication${favourites === 1 ? '' : 's'} you already like${avoid > 0 ? ` and ${avoid} to steer clear of` : ''}. Suggested feeds stay switched off until you validate them.`);
   }
+  // Named on the approval screen as well as the preferences one. A reader who
+  // skipped the preferences page has not seen these described anywhere else,
+  // and they are both on by default -- so this is the only place they would
+  // find out a briefing is about to start arriving twice a day.
+  const extras = [
+    preferences.optional_feeds.briefing
+      ? 'a <strong>Briefing</strong> twice a day, ten things worth knowing as one short article'
+      : null,
+    preferences.optional_feeds.classics
+      ? 'up to one <strong>Classic</strong> a day, an exceptional older article'
+      : null,
+  ].filter(Boolean);
+  bullets.push(
+    extras.length > 0
+      ? `Send the six topic feeds, plus ${extras.join(', and ')}.`
+      : 'Send the six topic feeds only — no briefing and no Classics.',
+  );
   return `<ul class="plain">${bullets.map((line) => `<li>${line}</li>`).join('')}</ul>${
     usedDefaults ? '<p class="hint">You skipped the preferences page, so these are Sift’s cautious defaults. You can change them later.</p>' : ''
   }<p class="hint">Nothing has been created yet. Approving below writes this reader’s private files on this Mac only.</p>`;
@@ -699,6 +808,7 @@ export function createUiApp(options: UiAppOptions = {}): Hono {
       <div class="field"><label>Preferred writing voices</label><input name="writing_voices" type="text" value="${escapeXml(proposed.writing_voices.join(', '))}" placeholder="concise, investigative, dryly funny"></div>
       <div class="field"><label>Styles to avoid</label><input name="disliked_styles" type="text" value="${escapeXml(proposed.disliked_styles.join(', '))}" placeholder="breathless hype, generic advice"></div>
       <div class="field"><label>Subjects you would rather watch or listen to</label><p class="hint">Optional. Leave blank if you have no preference.</p>${mediumRowsHtml(proposed.medium_preferences)}</div>
+      <div class="field"><label>Two extra feeds</label><p class="hint">Both are on to start with. Untick either one — the six topic feeds are unaffected, and you can change this later.</p>${optionalFeedsHtml(proposed.optional_feeds)}</div>
       <button type="submit">Build profile preview →</button></form>`));
     } catch (error) {
       return c.html(errorPage(error), 400);

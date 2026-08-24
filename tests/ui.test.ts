@@ -54,6 +54,7 @@ function fixtureRoot(): string {
   copyFileSync(resolve(PROJECT_ROOT, 'onboarding/chatgpt-profile-prompt.md'), resolve(root, 'onboarding/chatgpt-profile-prompt.md'));
   copyFileSync(resolve(PROJECT_ROOT, 'config/feed-config.yaml'), resolve(root, 'config/feed-config.yaml'));
   copyFileSync(resolve(PROJECT_ROOT, 'config/classics.yaml'), resolve(root, 'config/classics.yaml'));
+  copyFileSync(resolve(PROJECT_ROOT, 'config/briefing.yaml'), resolve(root, 'config/briefing.yaml'));
   copyFileSync(resolve(PROJECT_ROOT, 'config/models.yaml'), resolve(root, 'config/models.yaml'));
   return root;
 }
@@ -105,6 +106,80 @@ describe('Mac local UI', () => {
     expect(jsonError.detail).toContain('starts with {');
     // Anything unrecognised still reaches the reader rather than being swallowed.
     expect(plainError(new Error('disk on fire')).detail).toBe('disk on fire');
+  });
+
+  /**
+   * Both optional feeds have to be *explained*, not just named.
+   *
+   * A checkbox labelled "Classics" tells a first-time reader nothing, and the
+   * cost of guessing wrong is a feed they never open or one they never knew was
+   * available. Both boxes ship ticked, so the description is also the only
+   * warning that a briefing is about to start arriving twice a day.
+   */
+  it('explains both optional feeds on the preferences page, ticked', async () => {
+    const app = createUiApp({ projectRoot: fixtureRoot(), csrfToken: 'test-csrf' });
+    const html = await (await app.request('/onboarding/dossier', form({
+      csrf: 'test-csrf',
+      profile_id: 'explained',
+      dossier: JSON.stringify(dossier),
+    }))).text();
+
+    expect(html).toContain('The Briefing — twice a day');
+    expect(html).toContain('Sift Classics — at most one a day');
+    expect(html).toContain('8am and 8pm');
+    // Both pre-ticked: on by default, opt out rather than opt in.
+    expect(html).toMatch(/name="optional_briefing" type="checkbox" checked/);
+    expect(html).toMatch(/name="optional_classics" type="checkbox" checked/);
+  });
+
+  it('records a declined feed, and says so before anything is written', async () => {
+    const root = fixtureRoot();
+    const app = createUiApp({ projectRoot: root, csrfToken: 'test-csrf' });
+    const draftId = /name="draft_id" value="([^"]+)"/.exec(
+      await (await app.request('/onboarding/dossier', form({
+        csrf: 'test-csrf',
+        profile_id: 'no-briefing',
+        dossier: JSON.stringify(dossier),
+      }))).text(),
+    )?.[1]!;
+
+    // Keep Classics, decline the Briefing. An unticked checkbox sends nothing,
+    // so this is the real shape of the request, not a synthetic "false".
+    const preview = await (await app.request('/onboarding/preview', form({
+      csrf: 'test-csrf',
+      draft_id: draftId,
+      attention_budget: '15_30',
+      article_length: 'medium',
+      paywall_policy: 'free_only',
+      freshness_balance: 'balanced',
+      languages: 'en',
+      non_primary_language_policy: 'never',
+      serendipity: '5',
+      max_evergreen_age_days: '',
+      subscribed_publications: '',
+      writing_voices: '',
+      disliked_styles: '',
+      optional_classics: 'on',
+    }))).text();
+    // The approval screen names what will arrive, so a reader who skipped or
+    // mis-ticked the page above still finds out here.
+    expect(preview).toContain('<strong>Classic</strong>');
+    expect(preview).not.toContain('<strong>Briefing</strong>');
+
+    await app.request('/onboarding/create', form({
+      csrf: 'test-csrf',
+      draft_id: draftId,
+      approval: 'approve',
+      skip_calibration: 'on',
+    }));
+    const taste = readFileSync(resolve(root, 'profiles/no-briefing/taste-profile.yaml'), 'utf8');
+    expect(taste).toMatch(/briefing:\s*false/);
+    expect(taste).toMatch(/classics:\s*true/);
+
+    // And the feed is absent from the subscription list, not merely empty.
+    const dashboard = await (await app.request('/profile/no-briefing')).text();
+    expect(dashboard).toContain('/feed/classics.xml');
+    expect(dashboard).not.toContain('/feed/briefing.xml');
   });
 
   it('previews without writing, then creates only after explicit approval', async () => {

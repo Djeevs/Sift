@@ -1,5 +1,5 @@
 import { main, printTable } from './_bootstrap.js';
-import { funnelStats, sourceStats, costReport, feedStats, auditSummary } from '../pipeline/diagnostics.js';
+import { funnelStats, sourceStats, costReport, feedStats, briefingStats, auditSummary } from '../pipeline/diagnostics.js';
 
 /** The answers to every question in §20 of the brief. */
 await main(async ({ db, config }, args) => {
@@ -13,6 +13,17 @@ await main(async ({ db, config }, args) => {
   console.log('');
   console.log('=== feeds ===');
   printTable(feedStats(db, config));
+
+  if (config.briefing.enabled) {
+    console.log('');
+    console.log('=== briefing ===');
+    const editions = briefingStats(db, config);
+    if (editions.length === 0) {
+      console.log(`  none yet · scheduled for ${config.briefing.schedule.times.join(' and ')} (${config.briefing.schedule.timezone})`);
+    } else {
+      printTable(editions);
+    }
+  }
 
   console.log('');
   console.log('=== sources (by items published) ===');

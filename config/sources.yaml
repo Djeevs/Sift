@@ -26,6 +26,17 @@ defaults:
   enabled: true
   access: free
   item_kind: article
+  # Which lanes a source may reach, unless it says otherwise.
+  #
+  # feeds     the six generated feeds read in Reeder
+  # briefing  the twice-daily digest
+  # classics  archival mining of a back catalogue — opt in per source, since
+  #           most sites have no archive worth searching
+  #
+  # Narrowing a source's lanes never stops it being ingested or evaluated, only
+  # where its items may surface, so it keeps informing clustering and saturation
+  # for lanes it cannot appear in.
+  lanes: [feeds, briefing]
   quality_prior: 0.55
   volume_budget: 1.0
   exploration_floor: 0.08

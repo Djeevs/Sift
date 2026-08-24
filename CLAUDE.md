@@ -39,6 +39,7 @@ npm run dev             # same, reloading on change
 npm run onboard         # print/import the personal-assistant onboarding dossier
 npm run calibrate       # optional feedback on real ranked recommendations
 npm run classics        # archival discovery; at most one recommendation/day
+npm run briefing        # the twice-daily digest; --dry to preview the due slot
 npm test                # vitest, no network or API calls
 npm run typecheck       # strict tsc, no emit
 ```
@@ -71,6 +72,7 @@ npm run pipeline -- --sources quanta,kottke
 | `npm run cluster:eval` | Same-story precision/recall vs the labelled fixture (`-- --sweep`) |
 | `npm run replay` | Replays the stored corpus at different budgets; makes no model calls |
 | `npm run inspect` | Per-item trace: why it surfaced, or why it disappeared |
+| `npm run briefing -- --dry` | What the due briefing slot would publish, and why each line |
 
 ## Architecture
 
@@ -84,8 +86,23 @@ computation only as an item earns the right to more attention**.
 4 Luna             src/ai          gpt-5.6-luna triage, cheap
 5 Terra            src/ai          gpt-5.6-terra deep evaluation, expensive
 6 Final ranking    src/rank        deterministic portfolio construction
-7 Feeds            src/server      Atom/RSS for Reeder
+7 Briefing         src/briefing    twice-daily digest over stage 6's pool     [$0]
+8 Feeds            src/server      Atom/RSS for Reeder
 ```
+
+Two lanes sit beside the funnel rather than inside it, and both are **optional
+per reader**, chosen in onboarding and on by default:
+
+- **Classics** (`src/classics/`) — archival discovery, at most one a day. Its own
+  discovery, prompt and ranking; it does spend money.
+- **Briefing** (`src/briefing/`) — one article at 08:00 and 20:00 listing the top
+  ten, each a headline, a link and a short summary. Spends nothing.
+
+`reader_preferences.optional_feeds` gates both, and `loadConfig` resolves that
+into `config.classics.enabled` / `config.briefing.enabled` once, so no lane has
+to consult the reader's preferences itself. Use `allFeeds(config)` to enumerate
+subscribable feeds — never `[...config.feeds, config.classics.feed]`, which is
+how a new feed ends up served but not pushed.
 
 `src/pipeline/run.ts` is the spine — stages are numbered in comments there and
 that is the fastest way to orient. Supporting concerns: `src/pipeline/budget.ts`
@@ -116,7 +133,7 @@ run until they age out by content type (`budget.requeue_max_age_hours`).
 
 ### Config is the source of editorial truth
 
-Nothing that affects editorial outcomes belongs in application code. Eight YAML
+Nothing that affects editorial outcomes belongs in application code. Ten YAML
 files in `config/` hold every threshold, weight, curve and cap; `src/config/`
 loads and validates them with zod and records a content hash of each with every
 AI judgement and ranking decision, so stored results stay interpretable across
@@ -226,6 +243,20 @@ the distribution; verify that previously-published items still land in band A/B.
   serving feed XML from KV and recording opens to D1.
 - **Audit samples must never auto-publish.** They record whether they *would
   have*. That distinction is what makes the false-negative rate meaningful.
+  This includes the briefing: appearing on line seven is being read.
+- **The briefing must never write `published_feed_items`.** `publishEditions`
+  and `publishClassics` both skip anything already in that table, so a briefing
+  line recorded there would permanently disqualify the article from Essential —
+  the digest would silently consume the feeds it summarises. Editions live in
+  `briefing_editions` / `briefing_edition_items` for exactly this reason, and
+  overlap between the briefing and the feeds is intended.
+- **`terraOpportunity` does not know the briefing exists**, deliberately. The
+  briefing selects from evaluations already paid for, so giving it `feed_need`
+  would let a digest line bid an article away from a feed that will actually be
+  read. Do not add it there.
+- **Briefing days are local, feed days are UTC.** `dayKey()` is UTC and drives
+  daily caps; `briefing_editions.local_day` is the reader's calendar day,
+  because "the 8am one" has to mean their 8am. Keep them apart.
 
 ## Testing conventions
 
@@ -264,6 +295,8 @@ is enough context for most work.
 | a prompt | `prompts/` — **add a new version file**, point `final-ranking.yaml` at it | `npm run replay` |
 | ranking / diversification | `src/rank/portfolio.ts`, `publishEdition.ts` | `npm run replay` |
 | feed output | `src/server/renderFeed.ts`, `config/feed-config.yaml` | `npm run serve` |
+| the briefing | `src/briefing/`, `config/briefing.yaml` | `npm run briefing -- --dry` |
+| whether a reader gets an optional feed | `src/config/schema.ts` (`optional_feeds`), onboarding wizards in `src/ui/app.ts` **and** `src/cli/onboard.ts` | `npm test`, `npm run doctor` |
 | spend or degradation | `src/pipeline/budget.ts`, `config/budget.yaml` | `npm run budget` |
 | a config value | the YAML **and** `src/config/schema.ts`, with a comment recording *why* | `npm run typecheck` |
 | the schema | `src/db/schema.sql` **and** an `ensureColumn` in `src/db/index.ts` | `npm test` |
@@ -275,23 +308,23 @@ Read by range, not whole. Regenerate this index after editing README with:
 
 | Section | Range | Lines |
 | --- | --- | ---: |
-| How it works | `sed -n 20,79p README.md` | 60 |
-| Quick start | `sed -n 80,338p README.md` | 259 |
-| Commands | `sed -n 339,393p README.md` | 55 |
-| Spend is a system constraint, not a metric | `sed -n 394,462p README.md` | 69 |
-| Clustering, and what it is for | `sed -n 463,509p README.md` | 47 |
-| Measuring what the funnel throws away | `sed -n 510,532p README.md` | 23 |
-| The nine config files | `sed -n 533,677p README.md` | 145 |
-| Prompts | `sed -n 678,695p README.md` | 18 |
-| Explicit feedback from Reeder | `sed -n 696,731p README.md` | 36 |
-| Learning | `sed -n 732,753p README.md` | 22 |
-| Diagnostics | `sed -n 754,775p README.md` | 22 |
-| Costs | `sed -n 776,817p README.md` | 42 |
-| Which database am I using? | `sed -n 818,837p README.md` | 20 |
-| Deployment | `sed -n 838,975p README.md` | 138 |
-| Design decisions worth knowing | `sed -n 976,1039p README.md` | 64 |
-| Repository layout | `sed -n 1040,1069p README.md` | 30 |
-| Status | `sed -n 1070,1093p README.md` | 24 |
+| How it works | `sed -n 20,82p README.md` | 63 |
+| Quick start | `sed -n 83,353p README.md` | 271 |
+| Commands | `sed -n 354,410p README.md` | 57 |
+| Spend is a system constraint, not a metric | `sed -n 411,479p README.md` | 69 |
+| Clustering, and what it is for | `sed -n 480,526p README.md` | 47 |
+| Measuring what the funnel throws away | `sed -n 527,549p README.md` | 23 |
+| The ten config files | `sed -n 550,774p README.md` | 225 |
+| Prompts | `sed -n 775,792p README.md` | 18 |
+| Explicit feedback from Reeder | `sed -n 793,828p README.md` | 36 |
+| Learning | `sed -n 829,850p README.md` | 22 |
+| Diagnostics | `sed -n 851,874p README.md` | 24 |
+| Costs | `sed -n 875,916p README.md` | 42 |
+| Which database am I using? | `sed -n 917,936p README.md` | 20 |
+| Deployment | `sed -n 937,1074p README.md` | 138 |
+| Design decisions worth knowing | `sed -n 1075,1138p README.md` | 64 |
+| Repository layout | `sed -n 1139,1170p README.md` | 32 |
+| Status | `sed -n 1171,1194p README.md` | 24 |
 
 Operational counts in README (source count, volume, cost, cache-hit rates) have
 drifted from the database. Read them from `npm run stats` / `npm run budget`,

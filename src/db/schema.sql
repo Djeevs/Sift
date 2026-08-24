@@ -658,3 +658,55 @@ CREATE TABLE IF NOT EXISTS budget_snapshots (
   created_at       INTEGER NOT NULL,
   PRIMARY KEY (month_key, created_at)
 );
+
+-- --- The twice-daily briefing ----------------------------------------------
+-- A briefing is one *edition* per slot, not a set of published items, so it
+-- gets its own tables rather than rows in published_feed_items.
+--
+-- That separation is the whole design. published_feed_items is what every other
+-- stage treats as "already recommended": publishEdition and publishClassics
+-- both skip any item that appears in it. Writing briefing lines there would
+-- have made a mention on line seven of the morning briefing permanently
+-- disqualify that article from Essential -- the briefing would quietly consume
+-- the feeds it is meant to summarise. Overlap between the briefing and the
+-- feeds is intended.
+CREATE TABLE IF NOT EXISTS briefing_editions (
+  id             TEXT PRIMARY KEY,
+  feed_id        TEXT NOT NULL,
+  -- Local day, not the UTC day_key used for daily caps: a briefing is a
+  -- time-of-day ritual, and "the 8am one" must mean the reader's 8am.
+  local_day      TEXT NOT NULL,
+  slot           TEXT NOT NULL,
+  slot_label     TEXT NOT NULL DEFAULT '',
+  -- When the slot was due, and when it was actually built. They differ whenever
+  -- the Mac was asleep, and the gap is what max_lateness_minutes bounds.
+  scheduled_for  INTEGER NOT NULL,
+  published_at   INTEGER NOT NULL,
+  item_count     INTEGER NOT NULL DEFAULT 0,
+  candidates     INTEGER NOT NULL DEFAULT 0,
+  window_start   INTEGER NOT NULL,
+  -- The hash of briefing.yaml, not the combined `ranking` identity the feeds
+  -- record. A briefing weight cannot move a feed placement and a feed weight
+  -- cannot move a briefing line, so sharing one hash would mark every stored
+  -- decision as made under a changed config whenever either was touched. The
+  -- Terra scores behind each line carry their own hash in deep_evaluations.
+  config_hash    TEXT NOT NULL DEFAULT '',
+  UNIQUE (feed_id, local_day, slot)
+);
+
+CREATE INDEX IF NOT EXISTS idx_briefing_editions_time ON briefing_editions(feed_id, published_at DESC);
+
+CREATE TABLE IF NOT EXISTS briefing_edition_items (
+  edition_id     TEXT NOT NULL REFERENCES briefing_editions(id) ON DELETE CASCADE,
+  item_id        TEXT NOT NULL REFERENCES feed_items(id) ON DELETE CASCADE,
+  rank_position  INTEGER NOT NULL,
+  score          REAL NOT NULL,
+  -- The summary is frozen at build time. It is assembled from the publisher's
+  -- own words, and an edition already delivered to a reader must not change
+  -- because an extraction or re-evaluation later replaced its source text.
+  summary        TEXT NOT NULL DEFAULT '',
+  summary_source TEXT NOT NULL DEFAULT '',
+  PRIMARY KEY (edition_id, item_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_briefing_items_item ON briefing_edition_items(item_id);

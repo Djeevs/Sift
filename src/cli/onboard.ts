@@ -116,6 +116,7 @@ async function interactivePreferences(proposed: ReaderPreferences): Promise<{
       await rl.question(`Subjects better in another medium as subject=video|podcast|text|any [${currentMedium}]: `),
       proposed.medium_preferences,
     );
+    const optional_feeds = await askOptionalFeeds(rl, proposed.optional_feeds);
 
     return {
       preferences: readerPreferencesSchema.parse({
@@ -132,12 +133,50 @@ async function interactivePreferences(proposed: ReaderPreferences): Promise<{
         writing_voices: voices,
         disliked_styles: disliked,
         medium_preferences: medium,
+        optional_feeds,
       }),
       status: 'completed',
     };
   } finally {
     rl.close();
   }
+}
+
+/**
+ * The two optional feeds, explained before they are offered.
+ *
+ * The web wizard describes each one in a paragraph beside its checkbox; a
+ * terminal reader gets the same words. "Classics? [Y/n]" would be a question
+ * nobody can answer on their first run.
+ */
+async function askOptionalFeeds(
+  rl: Interface,
+  proposed: ReaderPreferences['optional_feeds'],
+): Promise<ReaderPreferences['optional_feeds']> {
+  const confirm = async (question: string, current: boolean): Promise<boolean> => {
+    const answer = (await rl.question(`${question} [${current ? 'Y/n' : 'y/N'}] `)).trim().toLowerCase();
+    if (!answer) return current;
+    return answer === 'y' || answer === 'yes';
+  };
+
+  console.log('\nTwo extra feeds, on top of the six topic feeds. Both are on by default.');
+  console.log('\n  The Briefing — twice a day');
+  console.log('  One short article at 8am and 8pm: the ten things worth knowing since the');
+  console.log('  last one, each a headline, a link and a summary in the publisher\u2019s own');
+  console.log('  words. Ranked by the same judgement as everything else, so it is ten things');
+  console.log('  relevant to you rather than ten things that happened. Costs nothing extra');
+  console.log('  to run, and never takes an article away from your other feeds.');
+  const briefing = await confirm('\n  Send the Briefing?', proposed.briefing);
+
+  console.log('\n  Sift Classics — at most one a day');
+  console.log('  One exceptional older article \u2014 at least a year old, often much more \u2014');
+  console.log('  chosen for timeless writing, obsessive expertise and irresistible rabbit');
+  console.log('  holes rather than for being new. Most days nothing clears the bar and');
+  console.log('  nothing arrives. This one does use a little AI credit, because each');
+  console.log('  candidate is read in full before it is offered.');
+  const classics = await confirm('\n  Send Sift Classics?', proposed.classics);
+
+  return { briefing, classics };
 }
 
 async function explicitApproval(): Promise<boolean> {

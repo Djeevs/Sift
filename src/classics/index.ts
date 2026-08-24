@@ -248,6 +248,23 @@ export async function runClassics(
   options: { forceDiscovery?: boolean; publish?: boolean; publishOnly?: boolean; top?: number; now?: number } = {},
 ): Promise<ClassicsRunResult> {
   const now = options.now ?? Date.now();
+
+  // The whole lane, not just discovery.
+  //
+  // `enabled` used to be checked inside discoverClassics alone, which meant a
+  // reader who turned Classics off still had their existing candidate pool
+  // evaluated -- real model spend -- and still received a Classic a day from
+  // it. The switch only stopped Sift looking for *new* ones. Now that
+  // onboarding lets a reader decline this lane, "off" has to mean off.
+  if (!config.classics.enabled) {
+    return {
+      eligibility: { attempted: 0, eligible: 0, rejectedAccess: 0, rejectedLanguage: 0, rejectedDuplicate: 0 },
+      evaluation: { considered: 0, evaluated: 0, failed: 0, spendUsd: 0 },
+      publication: { considered: 0, published: 0, itemIds: [], reason: 'Classics is turned off for this reader' },
+      top: [],
+    };
+  }
+
   let discovery: DiscoveryStats | undefined;
   const mayDiscover = !options.publishOnly && (options.forceDiscovery || config.env.environment !== 'test');
   if (mayDiscover && (options.forceDiscovery || discoveryDue(db, config, now))) {

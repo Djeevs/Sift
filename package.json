@@ -35,6 +35,7 @@
   "scripts": {
     "audit": "tsx src/cli/audit.ts",
     "bands": "tsx src/cli/bands.ts",
+    "briefing": "tsx src/cli/briefing.ts",
     "budget": "tsx src/cli/budget.ts",
     "calibrate": "tsx src/cli/calibrate.ts",
     "cluster:eval": "tsx src/cli/cluster-eval.ts",

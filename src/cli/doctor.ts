@@ -1,4 +1,5 @@
 import { main, printTable } from './_bootstrap.js';
+import { allFeeds } from '../config/index.js';
 import { onboardingReminder } from '../onboarding/index.js';
 
 interface OllamaTags {
@@ -86,8 +87,15 @@ await main(async ({ db, config }) => {
     console.log('warning: feeds are not access-token protected (fine for localhost; unsafe on a public server)');
   }
   console.log('');
+  console.log('Optional feeds:');
+  console.log(`  briefing: ${config.briefing.enabled
+    ? `on, ${config.briefing.schedule.times.join(' and ')} (${config.briefing.schedule.timezone}), top ${config.briefing.selection.items}`
+    : 'off for this reader'}`);
+  console.log(`  classics: ${config.classics.enabled ? 'on, at most one a day' : 'off for this reader'}`);
+
+  console.log('');
   console.log('Reeder subscription URLs:');
-  for (const feed of [...config.feeds, config.classics.feed]) {
+  for (const feed of allFeeds(config)) {
     const token = config.env.accessToken && config.env.accessToken !== 'change-me-please'
       ? `?t=${encodeURIComponent(config.env.accessToken)}`
       : '';

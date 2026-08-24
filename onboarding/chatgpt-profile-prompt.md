@@ -89,6 +89,18 @@ choice, include it as a non-binding value in `assistant_preference_hints`.
 Otherwise use `null` or an empty array. Do not ask follow-up questions merely to
 fill these operational settings.
 
+Two of those settings are whole feeds, both on unless I turn them off:
+
+- `briefing` — one short article at 8am and 8pm listing the ten things worth
+  knowing since the last one, each a headline, a link and a summary. Suggest
+  `false` only on real evidence that I avoid news digests or find twice-daily
+  delivery intrusive.
+- `classics` — at most one exceptional article a year or more old per day.
+  Suggest `false` only if `timeliness_profile.archival_appetite` is `low`.
+
+Leave either `null` when the evidence is thin. `null` means "keep the default",
+which is on, and that is the right answer far more often than a guess.
+
 ## Final output
 
 Return exactly one valid JSON object and no surrounding prose or Markdown fence.
@@ -237,7 +249,9 @@ independent preferences from `0` to `1`; they do not need to sum to one.
     "serendipity": null,
     "writing_voices": null,
     "disliked_styles": null,
-    "medium_preferences": []
+    "medium_preferences": [],
+    "briefing": null,
+    "classics": null
   },
   "interest_anchors": [
     {

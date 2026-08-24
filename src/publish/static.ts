@@ -2,7 +2,8 @@ import { mkdirSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import type { Db } from '../db/index.js';
 import type { AppConfig } from '../config/index.js';
-import { loadFeedItems, renderAtomFeed, renderJsonFeed, renderRssFeed } from '../server/renderFeed.js';
+import { allFeeds } from '../config/index.js';
+import { renderFeedDocuments } from '../server/renderFeed.js';
 
 export interface StaticExportResult {
   outputDir: string;
@@ -29,25 +30,24 @@ export function exportStaticFeeds(
   publicUrl: string,
 ): StaticExportResult {
   const base = publicUrl.replace(/\/+$/, '');
-  const feeds = [...config.feeds, config.classics.feed];
   const result: StaticExportResult = { outputDir, files: 0, feeds: [] };
 
-  for (const feed of feeds) {
-    const limit = feed.id === config.classics.feed.id
-      ? config.classics.publishing.feed_length
-      : config.final.final_ranking.feed_length;
-    const items = loadFeedItems(db, feed.id, limit);
-    const options = { tracked: false, publicUrl: base, accessToken: '' };
+  for (const feed of allFeeds(config)) {
+    const documents = renderFeedDocuments(db, config, feed, {
+      tracked: false,
+      publicUrl: base,
+      accessToken: '',
+    });
     const relative = {
       atom: `feed/${feed.slug}.xml`,
       rss: `feed/${feed.slug}.rss`,
       json: `feed/${feed.slug}.json`,
     };
-    atomicWrite(join(outputDir, relative.atom), renderAtomFeed(db, config, feed, items, options));
-    atomicWrite(join(outputDir, relative.rss), renderRssFeed(db, config, feed, items, options));
-    atomicWrite(join(outputDir, relative.json), renderJsonFeed(db, config, feed, items, options));
+    atomicWrite(join(outputDir, relative.atom), documents.atom);
+    atomicWrite(join(outputDir, relative.rss), documents.rss);
+    atomicWrite(join(outputDir, relative.json), documents.json);
     result.files += 3;
-    result.feeds.push({ id: feed.id, ...relative, items: items.length });
+    result.feeds.push({ id: feed.id, ...relative, items: documents.entries });
   }
 
   const index = [

@@ -1,8 +1,8 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
-import { resolveHome } from '../config/index.js';
+import { allFeeds, resolveHome } from '../config/index.js';
 import { main, printTable } from './_bootstrap.js';
-import { loadFeedItems, renderAtomFeed, renderJsonFeed, renderRssFeed } from '../server/renderFeed.js';
+import { renderFeedDocuments } from '../server/renderFeed.js';
 import { loadCloudflareConfig, kvBulkWrite, selectChangedEntries, type KvEntry } from '../cloudflare/kv.js';
 import { startJob } from '../pipeline/journal.js';
 import { DAY_MS } from '../util/time.js';
@@ -63,40 +63,29 @@ await main(async ({ db, config }, args) => {
 
     const itemUrls = new Map<string, string>();
 
-    const configuredFeeds = [...config.feeds, config.classics.feed];
+    const configuredFeeds = allFeeds(config);
     const requestedFeed = typeof args.feed === 'string' ? args.feed.trim() : undefined;
-    const allFeeds = requestedFeed
+    const selectedFeeds = requestedFeed
       ? configuredFeeds.filter((feed) => feed.id === requestedFeed || feed.slug === requestedFeed)
       : configuredFeeds;
-    if (allFeeds.length === 0) {
+    if (selectedFeeds.length === 0) {
       throw new Error(
         `Unknown feed "${requestedFeed}". Available feeds: ${configuredFeeds.map((feed) => feed.slug).join(', ')}`,
       );
     }
-    for (const feed of allFeeds) {
-      const items = loadFeedItems(
-        db,
-        feed.id,
-        feed.id === config.classics.feed.id
-          ? config.classics.publishing.feed_length
-          : config.final.final_ranking.feed_length,
-      );
-      const atom = renderAtomFeed(db, config, feed, items, options);
-      const rss = renderRssFeed(db, config, feed, items, options);
-      const json = renderJsonFeed(db, config, feed, items, options);
+    for (const feed of selectedFeeds) {
+      const { atom, rss, json, entries: entryCount, itemUrls: linked } =
+        renderFeedDocuments(db, config, feed, options);
 
       entries.push({ key: `feed:${feed.slug}`, value: atom });
       entries.push({ key: `feed:${feed.slug}:rss`, value: rss });
       entries.push({ key: `feed:${feed.slug}:json`, value: json });
 
-      for (const item of items) {
-        const target = item.original_url ?? item.canonical_url;
-        if (target) itemUrls.set(item.item_id, target);
-      }
+      for (const [itemId, target] of linked) itemUrls.set(itemId, target);
 
       summary.push({
         feed: feed.slug,
-        items: items.length,
+        items: entryCount,
         atom_kb: (atom.length / 1024).toFixed(1),
         rss_kb: (rss.length / 1024).toFixed(1),
         json_kb: (json.length / 1024).toFixed(1),
@@ -114,7 +103,7 @@ await main(async ({ db, config }, args) => {
       // A scoped upload must not replace the global index or claim that every
       // feed was refreshed. It writes only the selected feed's documents,
       // redirects, and a feed-specific freshness marker.
-      entries.push({ key: `meta:pushed_at:${allFeeds[0]!.slug}`, value: String(Date.now()) });
+      entries.push({ key: `meta:pushed_at:${selectedFeeds[0]!.slug}`, value: String(Date.now()) });
     } else {
       entries.push({ key: 'meta:pushed_at', value: String(Date.now()) });
       entries.push({
@@ -122,7 +111,7 @@ await main(async ({ db, config }, args) => {
         value: [
           'Sift — a private editorial desk.',
           '',
-          ...allFeeds.map((f) => `  ${config.env.publicUrl}/feed/${f.slug}.xml`),
+          ...selectedFeeds.map((f) => `  ${config.env.publicUrl}/feed/${f.slug}.xml`),
         ].join('\n'),
       });
     }
@@ -132,7 +121,7 @@ await main(async ({ db, config }, args) => {
     console.log('');
     console.log(
       `${entries.length} keys, ${(totalBytes / 1024).toFixed(1)} KB total ` +
-        `(${itemUrls.size} item URLs, ${allFeeds.length * 3} feed documents)`,
+        `(${itemUrls.size} item URLs, ${selectedFeeds.length * 3} feed documents)`,
     );
 
     // Only upload what actually changed.
@@ -166,13 +155,13 @@ await main(async ({ db, config }, args) => {
     if (changed.length === 0) {
       console.log('');
       console.log('Nothing changed since the last push; nothing uploaded.');
-      job.finish({ keys: 0, skipped, feeds: allFeeds.length });
+      job.finish({ keys: 0, skipped, feeds: selectedFeeds.length });
       return;
     }
 
     const written = await kvBulkWrite(cf!, changed);
     writeHashes(statePath, hashes);
-    job.finish({ keys: written, skipped, bytes: totalBytes, feeds: allFeeds.length });
+    job.finish({ keys: written, skipped, bytes: totalBytes, feeds: selectedFeeds.length });
 
     console.log('');
     console.log(`pushed ${written} key(s) to Cloudflare KV${skipped > 0 ? `, skipped ${skipped} unchanged` : ''}`);
