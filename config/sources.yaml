@@ -25,6 +25,9 @@
 # models.yaml sizes max_output_tokens for -- at that limit the reply truncated
 # and produced no candidates at all.
 suggestion:
+  # v2 scores each lane separately and judges incremental value against the
+  # sources already followed, rather than proposing well-regarded publications.
+  prompt: source-discovery-v2
   max_candidates: 12
   max_output_tokens: 4000
 

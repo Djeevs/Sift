@@ -48,39 +48,103 @@ const log = logger('suggest');
  * response is too much to lose to one unrecognised word.
  */
 const LANES = ['feeds', 'briefing', 'classics'] as const;
-const nearest = <T extends string>(allowed: readonly T[], fallback: T) =>
-  z.unknown().transform((value) => {
-    const raw = String(value ?? '').trim().toLowerCase().replace(/[\s-]+/g, '_');
-    return allowed.find((option) => option === raw)
-      ?? allowed.find((option) => raw.startsWith(option) || option.startsWith(raw))
-      ?? fallback;
-  });
+type Lane = (typeof LANES)[number];
+const ROLES = ['direct_follow', 'selective', 'discovery_only', 'wildcard'] as const;
+type Role = (typeof ROLES)[number];
 
-const modelCandidateSchema = z.object({
-  name: z.unknown().transform((v) => String(v ?? '').trim()),
-  domain: z.unknown().transform((v) => String(v ?? '').trim()),
-  disposition: nearest(['known_favorite', 'recommended', 'exploratory', 'avoid'] as const, 'exploratory'),
-  role: nearest(['direct_follow', 'selective', 'discovery_only', 'wildcard'] as const, 'selective'),
-  lanes: z.unknown().transform((value) => {
-    const list = (Array.isArray(value) ? value : [])
-      .map((entry) => String(entry ?? '').trim().toLowerCase())
-      .filter((entry): entry is (typeof LANES)[number] => (LANES as readonly string[]).includes(entry));
-    // A source with no usable lane is not a source; fall back to the default.
-    return list.length > 0 ? [...new Set(list)] : ['feeds', 'briefing'] as Array<(typeof LANES)[number]>;
-  }),
-  content_areas: z.unknown().transform((v) => (Array.isArray(v) ? v.map(String).filter(Boolean) : [])),
-  caveats: z.unknown().transform((v) => (Array.isArray(v) ? v.map(String).filter(Boolean) : [])),
-  reason: z.unknown().transform((v) => String(v ?? '').trim()),
-  basis: nearest(['explicit', 'observed', 'inferred'] as const, 'inferred'),
-  confidence: z.unknown().transform((v) => {
-    const n = Number(v);
-    return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 0.5;
-  }),
-});
+const nearest = <T extends string>(allowed: readonly T[], fallback: T) => (value: unknown): T => {
+  const raw = String(value ?? '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+  return allowed.find((option) => option === raw)
+    ?? allowed.find((option) => raw.startsWith(option) || option.startsWith(raw))
+    ?? fallback;
+};
+const asRole = nearest(ROLES, 'selective');
+const asDisposition = nearest(['known_favorite', 'recommended', 'exploratory', 'avoid'] as const, 'exploratory');
 
-const responseSchema = z.object({
-  candidates: z.array(modelCandidateSchema).default([]),
-});
+const unit = (value: unknown, fallback: number): number => {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : fallback;
+};
+
+export interface LaneVerdict {
+  lane: Lane;
+  fit: number;
+  role: Role;
+  reason: string;
+}
+
+export interface ProposedSource {
+  name: string;
+  domain: string;
+  homepageUrl: string;
+  sourceType: string;
+  lanes: LaneVerdict[];
+  contentAreas: string[];
+  caveats: string[];
+  incrementalValue: string;
+  expectedYield: string;
+  disposition: 'known_favorite' | 'recommended' | 'exploratory' | 'avoid';
+  basis: string[];
+  confidence: number;
+}
+
+/**
+ * Parse one candidate from the v2 shape.
+ *
+ * v2 scores each lane separately — a wire can be a strong `briefing` fit and a
+ * weak `feeds` one — so `lanes` is an object of verdicts rather than a list of
+ * names, and `role` lives inside each lane rather than at the top. A lane the
+ * model set to null, or filled with nonsense, is simply not assigned.
+ */
+function parseCandidate(raw: unknown): ProposedSource | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const record = raw as Record<string, unknown>;
+  const name = String(record.name ?? '').trim();
+  if (!name) return null;
+
+  const homepageUrl = String(record.homepage_url ?? '').trim();
+  // The prompt asks for a bare hostname, but a model that ignores that must not
+  // produce a candidate Sift then fails to fetch.
+  let domain = String(record.domain ?? '').trim().toLowerCase()
+    .replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0] ?? '';
+  if (!domain && homepageUrl) domain = hostOf(homepageUrl)?.replace(/^www\./, '') ?? '';
+  if (!domain) return null;
+
+  const laneRecord = (record.lanes ?? {}) as Record<string, unknown>;
+  const lanes: LaneVerdict[] = [];
+  for (const lane of LANES) {
+    const verdict = laneRecord[lane];
+    if (!verdict || typeof verdict !== 'object') continue;
+    const entry = verdict as Record<string, unknown>;
+    lanes.push({
+      lane,
+      fit: unit(entry.fit, 0.5),
+      role: asRole(entry.role),
+      reason: String(entry.reason ?? '').trim(),
+    });
+  }
+  // "Every candidate must qualify for at least one lane." Enforced here so the
+  // rule holds whether or not the model followed it.
+  if (lanes.length === 0) return null;
+
+  const list = (value: unknown): string[] =>
+    Array.isArray(value) ? value.map((entry) => String(entry ?? '').trim()).filter(Boolean) : [];
+
+  return {
+    name,
+    domain,
+    homepageUrl,
+    sourceType: String(record.source_type ?? 'publication').trim().toLowerCase(),
+    lanes: lanes.sort((a, b) => b.fit - a.fit),
+    contentAreas: list(record.content_areas),
+    caveats: list(record.caveats),
+    incrementalValue: String(record.incremental_value ?? '').trim(),
+    expectedYield: String(record.expected_yield ?? '').trim(),
+    disposition: asDisposition(record.disposition),
+    basis: list(record.basis),
+    confidence: unit(record.confidence, 0.5),
+  };
+}
 
 export interface ObservedDomain {
   domain: string;
@@ -129,12 +193,83 @@ export function observedDomains(db: Db, limit = 20): ObservedDomain[] {
   }
 }
 
+type StoredCandidate = z.output<typeof sourceCandidateSchema>;
+
+/**
+ * Fold new proposals into the stored list.
+ *
+ * A re-proposal replaces the stored one rather than being skipped. A later run
+ * has more evidence — more observed domains, a newer prompt — and the first
+ * version of this kept whichever verdict arrived first, so re-running with the
+ * lane-aware v2 prompt left three sources still carrying v1's single-lane
+ * guesses.
+ */
+export function mergeCandidates(
+  previous: StoredCandidate[],
+  incoming: StoredCandidate[],
+): { merged: StoredCandidate[]; refreshed: number } {
+  const key = (candidate: { name: string; domain: string }) =>
+    `${candidate.name.trim().toLowerCase()}|${candidate.domain.trim().toLowerCase()}`;
+  const byKey = new Map(previous.map((candidate) => [key(candidate), candidate]));
+  let refreshed = 0;
+  for (const candidate of incoming) {
+    if (byKey.has(key(candidate))) refreshed += 1;
+    byKey.set(key(candidate), candidate);
+  }
+  return { merged: [...byKey.values()], refreshed };
+}
+
+/** Exposed for tests: parsing model output is where this breaks in practice. */
+export function parseCandidatesForTest(raw: string): ProposedSource[] {
+  const envelope = parseModelJson(raw, z.object({ candidates: z.array(z.unknown()).default([]) }));
+  if (!envelope.ok) return [];
+  return envelope.value!.candidates
+    .map(parseCandidate)
+    .filter((candidate): candidate is ProposedSource => candidate !== null);
+}
+
 export interface SuggestionResult {
+  /** The model's full verdict, for display. */
+  proposals: ProposedSource[];
+  /** The same sources, projected onto the shape the rest of Sift stores. */
   candidates: Array<z.output<typeof sourceCandidateSchema>>;
   merged: number;
   skippedExisting: number;
   usedObserved: number;
   spendUsd: number;
+}
+
+/**
+ * Project a v2 verdict onto the candidate shape the rest of Sift reads.
+ *
+ * v2 scores each lane separately, which the stored source cannot express: a
+ * `sources.yaml` entry has one `volume_budget`, not one per lane. The role of
+ * the best-fitting lane wins, because that is the lane the source is really
+ * being added for, and the per-lane reasoning is preserved in the text rather
+ * than silently dropped.
+ */
+function toStoredCandidate(proposal: ProposedSource): z.output<typeof sourceCandidateSchema> {
+  const best = proposal.lanes[0]!;
+  const reason = [
+    proposal.incrementalValue,
+    ...proposal.lanes.map((lane) => `${lane.lane}: ${lane.reason}`),
+  ].filter(Boolean).join(' ');
+  return {
+    name: proposal.name,
+    domain: proposal.domain,
+    disposition: proposal.disposition,
+    role: best.role,
+    lanes: proposal.lanes.map((lane) => lane.lane),
+    content_areas: proposal.contentAreas,
+    // Expected yield is a caveat in everything but name: it is what the reader
+    // needs to know about how much filtering this source will require.
+    caveats: [...proposal.caveats, ...(proposal.expectedYield ? [`expected yield: ${proposal.expectedYield}`] : [])],
+    reason: reason || `${proposal.name} (${proposal.sourceType})`,
+    // The stored enum predates v2's richer list; observed evidence is the only
+    // distinction the downstream prior actually uses.
+    basis: proposal.basis.includes('observed_domains') ? 'observed' : 'inferred',
+    confidence: proposal.confidence,
+  };
 }
 
 /**
@@ -152,7 +287,7 @@ export async function suggestSources(
   options: { maxCandidates?: number } = {},
 ): Promise<SuggestionResult> {
   const max = options.maxCandidates ?? config.suggestion.max_candidates;
-  const prompt = loadPrompt(config, 'source-discovery-v1');
+  const prompt = loadPrompt(config, config.suggestion.prompt);
 
   const existing = config.sources.map((source) => {
     const host = hostOf(source.feed_url)?.replace(/^www\./, '') ?? '';
@@ -163,10 +298,12 @@ export async function suggestSources(
   const system = render(prompt.body, {
     ...tasteVars(config.taste),
     EXISTING_SOURCES: existing.join('\n') || '(none yet)',
+    // Hostnames harvested from fetched pages, so they are delimited as
+    // untrusted even though Sift derived the list itself.
     OBSERVED_DOMAINS: observed.length > 0
-      ? observed
+      ? untrustedDataBlock('observed domains', observed
           .map((entry) => `- ${entry.domain}: ${entry.items} articles, median score ${entry.medianScore.toFixed(2)}`)
-          .join('\n')
+          .join('\n'))
       : '(no reading history yet — propose from the reader profile alone)',
     MAX_CANDIDATES: String(max),
   });
@@ -176,24 +313,27 @@ export async function suggestSources(
     'deep',
     [
       { role: 'system', content: system },
-      // Domain names come from fetched pages, so they are untrusted input even
-      // though Sift derived the list itself.
-      { role: 'user', content: untrustedDataBlock('reader context', 'Propose sources for this reader now.') },
+      { role: 'user', content: 'Propose sources for this reader now.' },
     ],
     // A list of publications with reasons is far longer than the
     // single-article verdict models.yaml sizes the default for.
     { jsonMode: true, maxTokens: config.suggestion.max_output_tokens },
   );
 
-  const parsed = parseModelJson(completion.text, responseSchema);
-  if (!parsed.ok) {
+  const envelope = parseModelJson(completion.text, z.object({ candidates: z.array(z.unknown()).default([]) }));
+  if (!envelope.ok) {
     // Include what came back: truncation and refusal look identical otherwise.
     const sample = completion.text.trim().slice(-200) || '(empty response)';
     throw new Error(
-      `Could not read the model's source suggestions: ${parsed.error}. ` +
+      `Could not read the model's source suggestions: ${envelope.error}. ` +
       `It ended with: …${sample}. If it looks cut off, raise suggestion.max_output_tokens in sources.yaml.`,
     );
   }
+  // Each candidate is parsed on its own, so one malformed entry costs one
+  // proposal rather than the whole reply.
+  const proposed = envelope.value!.candidates
+    .map(parseCandidate)
+    .filter((candidate): candidate is ProposedSource => candidate !== null);
 
   // Never re-propose something already configured; the model is told not to,
   // and this makes it true regardless.
@@ -204,29 +344,22 @@ export async function suggestSources(
     known.add(source.name.trim().toLowerCase());
   }
 
-  const usable = parsed.value!.candidates.filter((c) => c.name && c.domain && c.reason.length >= 5);
-  const fresh = usable.filter((candidate) => {
-    const host = candidate.domain.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
-    return !(host && known.has(host)) && !known.has(candidate.name.trim().toLowerCase());
-  });
-  const skippedExisting = usable.length - fresh.length;
+  const fresh = proposed.filter((candidate) =>
+    !known.has(candidate.domain) && !known.has(candidate.name.trim().toLowerCase()));
+  const skippedExisting = proposed.length - fresh.length;
+
+  const stored = fresh.map(toStoredCandidate);
 
   const path = resolve(profileDir, 'source-candidates.json');
   const previous = readCandidates(path);
-  const seen = new Set(previous.map((c) => `${c.name.toLowerCase()}|${c.domain.toLowerCase()}`));
-  const merged = [...previous];
-  for (const candidate of fresh) {
-    const key = `${candidate.name.toLowerCase()}|${candidate.domain.toLowerCase()}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    merged.push(candidate);
-  }
+  const { merged, refreshed } = mergeCandidates(previous, stored);
 
   atomicWrite(path, `${JSON.stringify({ version: 1, candidates: merged }, null, 2)}\n`);
-  log.info(`proposed ${fresh.length} source(s); ${skippedExisting} were already followed`);
+  log.info(`proposed ${fresh.length} source(s); ${refreshed} replaced an earlier proposal; ${skippedExisting} were already followed`);
 
   return {
-    candidates: fresh,
+    proposals: fresh,
+    candidates: stored,
     merged: merged.length,
     skippedExisting,
     usedObserved: observed.length,

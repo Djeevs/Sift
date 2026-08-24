@@ -142,6 +142,8 @@ export const sourcesFileSchema = z.object({
    */
   suggestion: z
     .object({
+      /** Which prompt version proposes sources. Add a new file, point here. */
+      prompt: z.string().min(1).default('source-discovery-v2'),
       max_candidates: z.number().int().min(1).max(40).default(12),
       max_output_tokens: z.number().int().positive().default(4000),
     })
