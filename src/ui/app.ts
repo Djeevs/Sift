@@ -2,15 +2,13 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { parseEnv } from 'node:util';
 import { Hono, type Context } from 'hono';
 import { parse as parseYaml } from 'yaml';
+import { readEnv, updateEnv, safeEnvValue } from '../util/dotenv.js';
 import {
   PROJECT_ROOT,
   resolveHome,
   feedFileSchema,
-  classicsFileSchema,
-  briefingFileSchema,
   tasteProfileSchema,
   modelsFileSchema,
   readerPreferencesSchema,
@@ -50,6 +48,7 @@ import { ACTIONS, JobBusyError, UiJobRunner, type UiAction } from './jobs.js';
 import { readJobProgress, type JobProgress } from './progress.js';
 import { serviceState } from '../service/launchd.js';
 import { deleteReader } from '../onboarding/deleteReader.js';
+import { pushAccessTokenSecret } from '../cloudflare/wrangler.js';
 
 interface Draft {
   profileId: string;
@@ -101,17 +100,6 @@ export interface UiAppOptions {
   jobRunner?: UiJobRunner;
 }
 
-function readEnv(path: string): Record<string, string> {
-  if (!existsSync(path)) return {};
-  try {
-    return Object.fromEntries(
-      Object.entries(parseEnv(readFileSync(path, 'utf8'))).filter((entry): entry is [string, string] => typeof entry[1] === 'string'),
-    );
-  } catch {
-    return {};
-  }
-}
-
 const PROVIDERS = ['openai', 'ollama', 'openrouter', 'groq', 'gemini', 'anthropic', 'custom'] as const;
 type Provider = typeof PROVIDERS[number];
 
@@ -132,11 +120,6 @@ function configuredSecret(value: string | undefined): boolean {
   return Boolean(normalized && !/^(?:sk-\.\.\.|change-me|your[-_ ]|example)/i.test(normalized));
 }
 
-function safeEnvValue(value: string, label: string, max = 1000): string {
-  if (value.length > max || /[\r\n\0]/.test(value)) throw new Error(`${label} contains invalid characters.`);
-  return value.trim();
-}
-
 function safeHttpUrl(value: string | null): string | null {
   if (!value) return null;
   try {
@@ -149,17 +132,6 @@ function safeHttpUrl(value: string | null): string | null {
 
 /** Preserve unrelated profile settings and comments. Values are always quoted
  * so API-key punctuation cannot become dotenv syntax. */
-function updateEnv(path: string, updates: Record<string, string>): void {
-  const lines = existsSync(path) ? readFileSync(path, 'utf8').split(/\r?\n/) : [];
-  for (const [key, value] of Object.entries(updates)) {
-    const index = lines.findIndex((line) => new RegExp(`^${key}=`).test(line));
-    const rendered = `${key}=${JSON.stringify(value)}`;
-    if (index >= 0) lines[index] = rendered;
-    else lines.push(rendered);
-  }
-  atomicWrite(path, `${lines.join('\n').replace(/\n+$/, '')}\n`);
-}
-
 function field(body: Record<string, string | File>, name: string): string {
   const value = body[name];
   return typeof value === 'string' ? value : '';
@@ -217,57 +189,7 @@ function preferencesFromForm(body: Record<string, string | File>): ReaderPrefere
     writing_voices: splitList(field(body, 'writing_voices')),
     disliked_styles: splitList(field(body, 'disliked_styles')),
     medium_preferences: mediumPreferencesFromRows(body),
-    // Checkboxes, so an unticked box sends nothing. Both are rendered pre-ticked
-    // and read as "on unless explicitly unticked", which is the same default the
-    // schema and config/*.yaml use -- three places that must not disagree about
-    // whether a reader who did nothing gets these feeds.
-    optional_feeds: {
-      briefing: checked(body, 'optional_briefing'),
-      classics: checked(body, 'optional_classics'),
-    },
   });
-}
-
-/**
- * The two optional feeds, explained rather than named.
- *
- * A checkbox labelled "Classics" tells a first-time reader nothing, and the
- * cost of guessing wrong is a feed they never open or one they never knew they
- * could have had. Each box says what arrives, how often, and that it can be
- * changed later.
- */
-function optionalFeedsHtml(proposed: ReaderPreferences['optional_feeds']): string {
-  const rows = [
-    {
-      name: 'optional_briefing',
-      on: proposed.briefing,
-      title: 'The Briefing — twice a day',
-      body:
-        'One short article at 8am and 8pm: the ten things worth knowing since the last one, ' +
-        'each a headline, a link and a summary in the publisher’s own words. Chosen by the same ' +
-        'judgement as everything else, so it is ten things relevant to you rather than ten ' +
-        'things that happened. Costs nothing extra to run, and never takes an article away from ' +
-        'your other feeds.',
-    },
-    {
-      name: 'optional_classics',
-      on: proposed.classics,
-      title: 'Sift Classics — at most one a day',
-      body:
-        'One exceptional older article — at least a year old, often much more — chosen for ' +
-        'timeless writing, obsessive expertise and irresistible rabbit holes rather than for ' +
-        'being new. Most days there is nothing good enough and nothing arrives. This one does ' +
-        'use a little AI credit, because each candidate is read in full before it is offered.',
-    },
-  ];
-  return rows
-    .map(
-      (row) =>
-        `<div class="check field"><input id="${row.name}" name="${row.name}" type="checkbox"${row.on ? ' checked' : ''}>` +
-        `<label for="${row.name}"><strong>${escapeXml(row.title)}</strong><br>` +
-        `<span class="muted">${escapeXml(row.body)}</span></label></div>`,
-    )
-    .join('');
 }
 
 function option(value: string, label: string, selected: string): string {
@@ -384,9 +306,6 @@ function profileSummary(projectRoot: string, home: string, profileId: string): P
  *
  * Reads YAML directly rather than going through loadConfig, because the panel
  * lists every reader while loadConfig resolves the one the environment selects.
- * That means the optional-lane gating has to be repeated here -- so it is done
- * the same way, off the same two files, and a reader who declined the briefing
- * must not be shown a briefing URL that will serve them an empty feed.
  */
 function feedSlugs(projectRoot: string, home: string, profileId: string): Array<{ title: string; slug: string }> {
   const directory = profileDirectory(profileId, home);
@@ -394,39 +313,7 @@ function feedSlugs(projectRoot: string, home: string, profileId: string): Array<
     ? resolve(directory, name)
     : resolve(projectRoot, 'config', name);
   const feeds = feedFileSchema.parse(parseYaml(readFileSync(configPath('feed-config.yaml'), 'utf8'))).feeds;
-
-  /**
-   * An optional lane whose config cannot be read is treated as switched off,
-   * not as a fatal error.
-   *
-   * feedSlugs feeds the whole dashboard, so throwing here replaces every panel
-   * -- including the ones that would explain the problem -- with one ENOENT
-   * message, which is the failure mode `listen()` in runtime.ts exists to
-   * avoid. A reader missing an optional feed from the list can still set up
-   * storage, run the pipeline and subscribe to the six that matter.
-   */
-  const optionalLane = <T>(name: string, parse: (data: unknown) => T): T | null => {
-    try {
-      return parse(parseYaml(readFileSync(configPath(name), 'utf8')));
-    } catch {
-      return null;
-    }
-  };
-  const classics = optionalLane('classics.yaml', (data) => classicsFileSchema.parse(data));
-  const briefing = optionalLane('briefing.yaml', (data) => briefingFileSchema.parse(data));
-
-  // A reader mid-onboarding has no taste profile yet; both lanes default on,
-  // exactly as they would once the profile is written.
-  const tastePath = resolve(directory, 'taste-profile.yaml');
-  const optional = existsSync(tastePath)
-    ? tasteProfileSchema.parse(parseYaml(readFileSync(tastePath, 'utf8'))).reader_preferences.optional_feeds
-    : { briefing: true, classics: true };
-
-  return [
-    ...feeds,
-    ...(classics?.enabled && optional.classics ? [classics.feed] : []),
-    ...(briefing?.enabled && optional.briefing ? [briefing.feed] : []),
-  ].map((feed) => ({ title: feed.title, slug: feed.slug }));
+  return feeds.map((feed) => ({ title: feed.title, slug: feed.slug }));
 }
 
 /**
@@ -638,13 +525,13 @@ export function humanProfileSummary(
   preferences: ReaderPreferences,
   usedDefaults: boolean,
 ): string {
-  const topics = dossier.interests
+  const topics = dossier.stable_interests
     .slice()
     .sort((a, b) => b.priority - a.priority)
     .slice(0, 5)
     .map((topic) => topic.label);
-  const avoid = dossier.source_candidates.filter((candidate) => candidate.disposition === 'avoid').length;
-  const favourites = dossier.source_candidates.filter((candidate) => candidate.disposition === 'known_favorite').length;
+  const avoid = dossier.known_source_evidence.filter((source) => source.relationship === 'known_dislike').length;
+  const favourites = dossier.known_source_evidence.filter((source) => source.relationship === 'known_favorite').length;
   const bullets: string[] = [];
   if (topics.length > 0) {
     bullets.push(`Look hardest for writing about <strong>${topics.map(escapeXml).join('</strong>, <strong>')}</strong>.`);
@@ -659,23 +546,6 @@ export function humanProfileSummary(
   if (favourites > 0 || avoid > 0) {
     bullets.push(`Noted ${favourites} publication${favourites === 1 ? '' : 's'} you already like${avoid > 0 ? ` and ${avoid} to steer clear of` : ''}. Suggested feeds stay switched off until you validate them.`);
   }
-  // Named on the approval screen as well as the preferences one. A reader who
-  // skipped the preferences page has not seen these described anywhere else,
-  // and they are both on by default -- so this is the only place they would
-  // find out a briefing is about to start arriving twice a day.
-  const extras = [
-    preferences.optional_feeds.briefing
-      ? 'a <strong>Briefing</strong> twice a day, ten things worth knowing as one short article'
-      : null,
-    preferences.optional_feeds.classics
-      ? 'up to one <strong>Classic</strong> a day, an exceptional older article'
-      : null,
-  ].filter(Boolean);
-  bullets.push(
-    extras.length > 0
-      ? `Send the six topic feeds, plus ${extras.join(', and ')}.`
-      : 'Send the six topic feeds only — no briefing and no Classics.',
-  );
   return `<ul class="plain">${bullets.map((line) => `<li>${line}</li>`).join('')}</ul>${
     usedDefaults ? '<p class="hint">You skipped the preferences page, so these are Sift’s cautious defaults. You can change them later.</p>' : ''
   }<p class="hint">Nothing has been created yet. Approving below writes this reader’s private files on this Mac only.</p>`;
@@ -808,7 +678,6 @@ export function createUiApp(options: UiAppOptions = {}): Hono {
       <div class="field"><label>Preferred writing voices</label><input name="writing_voices" type="text" value="${escapeXml(proposed.writing_voices.join(', '))}" placeholder="concise, investigative, dryly funny"></div>
       <div class="field"><label>Styles to avoid</label><input name="disliked_styles" type="text" value="${escapeXml(proposed.disliked_styles.join(', '))}" placeholder="breathless hype, generic advice"></div>
       <div class="field"><label>Subjects you would rather watch or listen to</label><p class="hint">Optional. Leave blank if you have no preference.</p>${mediumRowsHtml(proposed.medium_preferences)}</div>
-      <div class="field"><label>Two extra feeds</label><p class="hint">Both are on to start with. Untick either one — the six topic feeds are unaffected, and you can change this later.</p>${optionalFeedsHtml(proposed.optional_feeds)}</div>
       <button type="submit">Build profile preview →</button></form>`));
     } catch (error) {
       return c.html(errorPage(error), 400);
@@ -956,7 +825,9 @@ export function createUiApp(options: UiAppOptions = {}): Hono {
         ? '<div class="card good"><strong>AI settings saved.</strong> The API key was not returned to this page.</div>'
         : c.req.query('saved') === 'calibration'
           ? '<div class="card good"><strong>Article feedback saved.</strong> Sift will use the positive and negative examples on future runs.</div>'
-          : '';
+          : c.req.query('saved') === 'cloudflare-token'
+            ? '<div class="card good"><strong>Sent to Cloudflare.</strong> Your reading app’s links keep working with this reader’s current key.</div>'
+            : '';
       const localPublishing = /^https?:\/\/(?:localhost|127\.0\.0\.1)(?::|\/|$)/i.test(profile.publicUrl);
       // Copying a URL that nothing is serving is the quietest failure in the
       // whole product: the reader app just shows an empty feed and says nothing.
@@ -1019,8 +890,13 @@ export function createUiApp(options: UiAppOptions = {}): Hono {
       <details open><summary>On this Mac — start here</summary><p>${serverUp
         ? '<span class="good">The feed server is running.</span> The links below work now. Paste one into your reading app (Reeder, NetNewsWire, Feedly — anything that takes an RSS address).'
         : '<span class="warning">The feed server is not running.</span> The links below will not work until you start it. Open Terminal, paste the command, and leave that window open.'}</p><div class="actions"><code id="serve-command">${escapeXml(serveCommand)}</code><button type="button" class="secondary" data-copy="#serve-command">Copy command</button></div><p class="hint">Other devices on your network can subscribe only while this Mac is awake and reachable.</p></details>
-      <details><summary>Later: Cloudflare, so feeds work while the Mac sleeps</summary><p>Cloudflare keeps the RSS URLs reachable when your Mac sleeps; the Mac still does discovery and ranking when you run or schedule Sift.</p><ol><li>From <code>worker/</code>, run <code>npx wrangler login</code>, create the SIFT_FEEDS KV namespace and <code>sift-events</code> D1 database, then deploy the Worker.</li><li>Put the returned namespace id and Worker URL in this profile’s private <code>.env</code>. Use <code>wrangler secret put</code> for the feed token—never place it in a shell command, chat, or committed file.</li><li>Preview with <code>npm run push -- --profile ${escapeXml(id)} --dry</code>, then upload with <code>npm run push -- --profile ${escapeXml(id)}</code>.</li></ol><p class="hint">Full commands and the worker configuration are in README → Deployment.</p></details>
-      
+      <details${profile.cloudflareConfigured ? ' open' : ''}><summary>${profile.cloudflareConfigured ? 'Cloudflare — your feeds stay up while this Mac sleeps' : 'Later: keep your feeds working while this Mac sleeps'}</summary>${profile.cloudflareConfigured
+        ? `<p>Your feeds are served by Cloudflare, not this Mac, so links in your reading app keep working even when this Mac is off. This Mac still needs to be on to <em>find</em> new articles and send them there.</p><div class="actions"><form method="post" action="/profile/${id}/cloudflare/push-token">${hiddenCsrf(csrf)}<button class="secondary" type="submit">Re-send this reader’s key to Cloudflare</button></form></div><p class="hint">Only needed if links stop working after changing this reader’s settings by hand.</p>`
+        : `<p>Right now your feeds only work while this Mac is on and awake. Cloudflare is a free service that keeps them reachable all the time instead — your reading app talks to Cloudflare, and this Mac just sends it new articles when you run Sift.</p>
+      <ol class="plain-steps"><li>You’ll need a free account at <a href="https://dash.cloudflare.com/sign-up" target="_blank" rel="noopener noreferrer">cloudflare.com</a> — no card required.</li><li>Open Terminal in the Sift folder and run the command below. It will open your browser once, to ask you to approve the connection to your new account — everything else happens in the terminal.</li><li>When it finishes, come back here and use <strong>Push, and subscribe</strong> below to send your articles.</li></ol>
+      <div class="actions"><code id="cloud-setup-command">npm run cloud:setup -- --profile ${escapeXml(id)}</code><button type="button" class="secondary" data-copy="#cloud-setup-command">Copy command</button></div>
+      <p class="hint">This creates real (free-tier) resources in your Cloudflare account. Nothing is charged unless you far exceed Cloudflare's generous free limits, which ordinary use will not.</p>`}</details>
+
       <details><summary>Static hosting</summary><p>Export feed files, then upload the generated directory to GitHub Pages, Cloudflare Pages, a NAS, or another static host.</p><div class="actions"><code id="export-command">${escapeXml(exportCommand)}</code><button type="button" class="secondary" data-copy="#export-command">Copy command</button></div></details>
       </div></section>
 
@@ -1044,6 +920,20 @@ export function createUiApp(options: UiAppOptions = {}): Hono {
       <div class="actions"><form method="post" action="/profile/${id}/action">${hiddenCsrf(csrf)}<input type="hidden" name="action" value="doctor"><button class="secondary" type="submit"${running ? ' disabled title="A run is already in progress"' : ''}>${escapeXml(ACTIONS.doctor.label)}</button></form><a class="button secondary" href="${escapeXml(`${profile.publicUrl}/admin${token}`)}">Open diagnostics</a></div></section>`));
     } catch (error) {
       return c.html(errorPage(error), 404);
+    }
+  });
+
+  app.post('/profile/:id/cloudflare/push-token', async (c) => {
+    try {
+      const id = validateProfileId(c.req.param('id'));
+      await parseForm(c); // checks the CSRF token
+      const profile = profileSummary(projectRoot, home, id);
+      if (!profile.cloudflareConfigured) throw new Error('Cloudflare is not set up for this reader yet. Run npm run cloud:setup first.');
+      if (!profile.token || profile.token === 'change-me-please') throw new Error('This reader has no feed-access token to push.');
+      await pushAccessTokenSecret(profile.token);
+      return c.redirect(`/profile/${encodeURIComponent(id)}?saved=cloudflare-token`, 303);
+    } catch (error) {
+      return c.html(errorPage(error), 400);
     }
   });
 
@@ -1242,7 +1132,7 @@ export function createUiApp(options: UiAppOptions = {}): Hono {
         <p class="muted">${escapeXml(item.reason)}</p>
         ${item.sampleTitles.length > 0 ? `<p class="hint">Recently published: ${item.sampleTitles.map((title) => escapeXml(title)).join(' · ')}</p>` : ''}
         ${item.caveats.length > 0 ? `<p class="hint">Your assistant’s caution: ${item.caveats.map((caveat) => escapeXml(caveat)).join('; ')}</p>` : ''}
-        <p class="hint">Sift will read this ${item.role === 'direct_follow' ? 'regularly' : item.role === 'selective' ? 'selectively' : item.role === 'wildcard' ? 'rarely, as a wildcard' : 'only as a discovery source'}, for ${escapeXml(item.lanes.map((lane) => lane === 'feeds' ? 'your feeds' : lane === 'briefing' ? 'the briefing' : 'classics').join(' and '))}.</p>
+        <p class="hint">Sift will read this ${item.role === 'direct_follow' ? 'regularly' : item.role === 'selective' ? 'selectively' : item.role === 'wildcard' ? 'rarely, as a wildcard' : 'only as a discovery source'}.</p>
       </article>`;
 
       return c.html(page('Suggested sources', `<p class="eyebrow">Suggested sources</p><h1>Your assistant found these.</h1><p class="lede">Sift checked that each one really publishes a feed. Tick the ones to follow — you can remove any of them later, and your existing sources are untouched.</p>

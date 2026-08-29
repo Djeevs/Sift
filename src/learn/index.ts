@@ -27,8 +27,6 @@ export interface Signal {
   category: string | null;
   bestAnchorId: string | null;
   ragebait: number;
-  isClassic: boolean;
-  pleasureClass: string | null;
   /** Net signal strength: positive = liked, negative = rejected. */
   value: number;
   kinds: string[];
@@ -48,16 +46,12 @@ export function collectSignals(db: Db, config: AppConfig): Signal[] {
     category: string | null;
     best_anchor_id: string | null;
     ragebait: number;
-    is_classic: number;
-    pleasure_class: string | null;
     opens: number;
     excellent: number;
     not_for_me: number;
   }>(
-    `SELECT p.item_id, fi.source_id, COALESCE(cle.category, de.category) AS category, ce.best_anchor_id,
-            COALESCE(cle.ragebait, de.ragebait, 0) AS ragebait,
-            CASE WHEN cc.item_id IS NULL THEN 0 ELSE 1 END AS is_classic,
-            cle.pleasure_class,
+    `SELECT p.item_id, fi.source_id, de.category, ce.best_anchor_id,
+            COALESCE(de.ragebait, 0) AS ragebait,
             (SELECT COUNT(*) FROM open_events o WHERE o.item_id = p.item_id) AS opens,
             (SELECT COUNT(*) FROM explicit_feedback f
               WHERE f.item_id = p.item_id AND f.signal = 'excellent') AS excellent,
@@ -66,9 +60,7 @@ export function collectSignals(db: Db, config: AppConfig): Signal[] {
      FROM (SELECT DISTINCT item_id FROM published_feed_items) p
      JOIN feed_items fi ON fi.id = p.item_id
      LEFT JOIN deep_evaluations de ON de.item_id = p.item_id
-     LEFT JOIN cheap_evaluations ce ON ce.item_id = p.item_id
-     LEFT JOIN classics_candidates cc ON cc.item_id = p.item_id
-     LEFT JOIN classics_evaluations cle ON cle.item_id = p.item_id`,
+     LEFT JOIN cheap_evaluations ce ON ce.item_id = p.item_id`,
   );
 
   const signals: Signal[] = [];
@@ -104,8 +96,6 @@ export function collectSignals(db: Db, config: AppConfig): Signal[] {
       category: row.category,
       bestAnchorId: row.best_anchor_id,
       ragebait: row.ragebait,
-      isClassic: row.is_classic === 1,
-      pleasureClass: row.pleasure_class,
       value,
       kinds,
     });
@@ -158,7 +148,6 @@ export function applyLearning(db: Db, config: AppConfig): LearnStats {
     bump('source', signal.sourceId, signal.value);
     bump('category', signal.category, signal.value);
     bump('anchor', signal.bestAnchorId, signal.value);
-    if (signal.isClassic) bump('classic_trait', signal.pleasureClass, signal.value);
   }
 
   const ts = Date.now();

@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto';
 import { PROJECT_ROOT } from '../config/index.js';
 
 /** wrangler must run where wrangler.toml and its own node_modules live. */
-const WORKER_DIR = resolve(PROJECT_ROOT, 'worker');
+export const WORKER_DIR = resolve(PROJECT_ROOT, 'worker');
 
 const log = logger('cloudflare');
 

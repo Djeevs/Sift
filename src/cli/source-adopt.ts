@@ -49,7 +49,6 @@ if (!takeAll && !requested) {
   for (const source of available) {
     console.log(`  ${source.id.padEnd(20)} ${source.name}`);
     console.log(`  ${' '.repeat(20)} ${source.feedUrl}`);
-    console.log(`  ${' '.repeat(20)} lanes: ${source.lanes.join(', ')}`);
     console.log(`  ${' '.repeat(20)} ${source.disposition.replaceAll('_', ' ')} · ${source.role.replaceAll('_', ' ')} · prior ${source.qualityPrior}, volume ${source.volumeBudget}`);
     console.log(`  ${' '.repeat(20)} ${source.reason}`);
     for (const caveat of source.caveats) console.log(`  ${' '.repeat(20)} caution: ${caveat}`);

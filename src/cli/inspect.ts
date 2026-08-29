@@ -34,11 +34,6 @@ await main(async ({ db, config }, args) => {
       console.log('routing:');
       printTable(detail.routing);
     }
-    if (detail.briefings.length) {
-      console.log('');
-      console.log('briefings that carried it:');
-      printTable(detail.briefings);
-    }
     if (detail.cluster.length) {
       console.log('');
       console.log('story cluster siblings:');

@@ -8,40 +8,38 @@ import { createUiApp, slugifyReaderName, plainError } from '../src/ui/app.js';
 import { ACTIONS, JobBusyError, UiJobRunner, redactUiOutput, type UiJob } from '../src/ui/jobs.js';
 
 const dossier = {
-  version: 3,
+  version: 5,
   reading_goal: 'Find a small number of articles that consistently justify attention.',
   executive_taste_summary: 'A curious reader who values clear explanations and surprising discoveries.',
   attention_selection_model: 'Prefer concrete intellectual payoff over comprehensive coverage.',
-  values_and_outlook: [],
-  current_context: [],
-  interests: [{
+  contextual_interests: [],
+  stable_interests: [{
     id: 'science_discoveries',
     label: 'science discoveries',
     tier: 'core',
     priority: 8,
     preferred_coverage: ['Discoveries with a conceptual payoff and accessible explanation.'],
+    avoid_coverage: [],
     conditions: [],
-    medium_fit: 'cross_medium',
     basis: 'explicit',
     confidence: 0.9,
   }],
   valuable_intersections: [],
-  rewarding_qualities: [{ quality: 'clear mechanisms', why: 'They produce reusable understanding.', strength: 'strong', basis: 'observed', confidence: 0.8 }],
-  unrewarding_qualities: [{ quality: 'thin aggregation', why: 'It adds little beyond the headline.', strength: 'strong', basis: 'observed', confidence: 0.8 }],
-  content_mix: { breaking_news: 0.2, reporting: 0.6, analysis: 0.8, narrative: 0.6, criticism: 0.4, practical: 0.4, entertainment: 0.4, serendipity: 0.5 },
-  timeliness_profile: { news_vs_interpretation: 'Prefer interpretation unless immediacy matters.', loses_value_quickly: [], remains_valuable: ['conceptual explanations'], archival_appetite: 'selective', age_guidance: 'Age alone is not disqualifying.', basis: 'inferred', confidence: 0.6 },
+  taste_signals: [
+    { signal: 'clear mechanisms', effect: 'strong_positive', why: 'They produce reusable understanding.', basis: 'observed', confidence: 0.8 },
+    { signal: 'thin aggregation', effect: 'strong_negative', why: 'It adds little beyond the headline.', basis: 'observed', confidence: 0.8 },
+  ],
+  semantic_anchors: [{ id: 'science', description: 'Accessible science discoveries that materially change understanding.', basis: 'explicit', confidence: 0.8 }],
+  avoid_anchors: [],
   depth_length_profile: { summary: 'Depth matters more than length.', longform_payoff_threshold: 'Long work must deliver durable insight.', technical_complexity: 'Prefer accessible explanation.', basis: 'inferred', confidence: 0.6 },
-  medium_profile: [],
-  entertainment_profile: { role_in_ranking: 'Enjoyment is useful but secondary to insight.', rewarding_forms: [], basis: 'inferred', confidence: 0.4 },
+  timeliness_profile: { summary: 'Prefer interpretation unless immediacy matters.', loses_value_quickly: [], remains_valuable: ['conceptual explanations'], basis: 'inferred', confidence: 0.6 },
   exploration_profile: { frequency: 'occasional', execution_override_strength: 5, unfamiliar_topic_quality_bar: 'Require excellent execution.', override_conditions: [], basis: 'inferred', confidence: 0.5 },
+  exploration_frontiers: [],
+  medium_profile: [],
   professional_personal_boundary: { enjoyed_overlap: [], useful_but_not_personal: [], guidance: 'Do not infer obligatory work reading.', basis: 'inferred', confidence: 0.5 },
-  style_references: [],
+  known_source_evidence: [],
   examples: [],
   assistant_preference_hints: {},
-  interest_anchors: [{ id: 'science', category: 'ideas_science', description: 'Accessible science discoveries that materially change understanding.' }],
-  avoid_anchors: [],
-  source_candidates: [],
-  ranking_guidance: { strong_positive_signals: ['conceptual payoff'], moderate_positive_signals: [], weak_positive_signals: [], strong_negative_signals: ['thin aggregation'], hard_filters: [], override_rules: [], interaction_effects: [], source_level_guidance: [], duplication_and_saturation: [] },
   contradictions: [],
   uncertainties: [],
   privacy_redactions: [],
@@ -53,8 +51,6 @@ function fixtureRoot(): string {
   mkdirSync(resolve(root, 'config'), { recursive: true });
   copyFileSync(resolve(PROJECT_ROOT, 'onboarding/chatgpt-profile-prompt.md'), resolve(root, 'onboarding/chatgpt-profile-prompt.md'));
   copyFileSync(resolve(PROJECT_ROOT, 'config/feed-config.yaml'), resolve(root, 'config/feed-config.yaml'));
-  copyFileSync(resolve(PROJECT_ROOT, 'config/classics.yaml'), resolve(root, 'config/classics.yaml'));
-  copyFileSync(resolve(PROJECT_ROOT, 'config/briefing.yaml'), resolve(root, 'config/briefing.yaml'));
   copyFileSync(resolve(PROJECT_ROOT, 'config/models.yaml'), resolve(root, 'config/models.yaml'));
   return root;
 }
@@ -106,80 +102,6 @@ describe('Mac local UI', () => {
     expect(jsonError.detail).toContain('starts with {');
     // Anything unrecognised still reaches the reader rather than being swallowed.
     expect(plainError(new Error('disk on fire')).detail).toBe('disk on fire');
-  });
-
-  /**
-   * Both optional feeds have to be *explained*, not just named.
-   *
-   * A checkbox labelled "Classics" tells a first-time reader nothing, and the
-   * cost of guessing wrong is a feed they never open or one they never knew was
-   * available. Both boxes ship ticked, so the description is also the only
-   * warning that a briefing is about to start arriving twice a day.
-   */
-  it('explains both optional feeds on the preferences page, ticked', async () => {
-    const app = createUiApp({ projectRoot: fixtureRoot(), csrfToken: 'test-csrf' });
-    const html = await (await app.request('/onboarding/dossier', form({
-      csrf: 'test-csrf',
-      profile_id: 'explained',
-      dossier: JSON.stringify(dossier),
-    }))).text();
-
-    expect(html).toContain('The Briefing — twice a day');
-    expect(html).toContain('Sift Classics — at most one a day');
-    expect(html).toContain('8am and 8pm');
-    // Both pre-ticked: on by default, opt out rather than opt in.
-    expect(html).toMatch(/name="optional_briefing" type="checkbox" checked/);
-    expect(html).toMatch(/name="optional_classics" type="checkbox" checked/);
-  });
-
-  it('records a declined feed, and says so before anything is written', async () => {
-    const root = fixtureRoot();
-    const app = createUiApp({ projectRoot: root, csrfToken: 'test-csrf' });
-    const draftId = /name="draft_id" value="([^"]+)"/.exec(
-      await (await app.request('/onboarding/dossier', form({
-        csrf: 'test-csrf',
-        profile_id: 'no-briefing',
-        dossier: JSON.stringify(dossier),
-      }))).text(),
-    )?.[1]!;
-
-    // Keep Classics, decline the Briefing. An unticked checkbox sends nothing,
-    // so this is the real shape of the request, not a synthetic "false".
-    const preview = await (await app.request('/onboarding/preview', form({
-      csrf: 'test-csrf',
-      draft_id: draftId,
-      attention_budget: '15_30',
-      article_length: 'medium',
-      paywall_policy: 'free_only',
-      freshness_balance: 'balanced',
-      languages: 'en',
-      non_primary_language_policy: 'never',
-      serendipity: '5',
-      max_evergreen_age_days: '',
-      subscribed_publications: '',
-      writing_voices: '',
-      disliked_styles: '',
-      optional_classics: 'on',
-    }))).text();
-    // The approval screen names what will arrive, so a reader who skipped or
-    // mis-ticked the page above still finds out here.
-    expect(preview).toContain('<strong>Classic</strong>');
-    expect(preview).not.toContain('<strong>Briefing</strong>');
-
-    await app.request('/onboarding/create', form({
-      csrf: 'test-csrf',
-      draft_id: draftId,
-      approval: 'approve',
-      skip_calibration: 'on',
-    }));
-    const taste = readFileSync(resolve(root, 'profiles/no-briefing/taste-profile.yaml'), 'utf8');
-    expect(taste).toMatch(/briefing:\s*false/);
-    expect(taste).toMatch(/classics:\s*true/);
-
-    // And the feed is absent from the subscription list, not merely empty.
-    const dashboard = await (await app.request('/profile/no-briefing')).text();
-    expect(dashboard).toContain('/feed/classics.xml');
-    expect(dashboard).not.toContain('/feed/briefing.xml');
   });
 
   it('previews without writing, then creates only after explicit approval', async () => {

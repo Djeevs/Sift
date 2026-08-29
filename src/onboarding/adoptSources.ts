@@ -38,8 +38,6 @@ export interface AdoptableSource {
   disposition: 'known_favorite' | 'recommended' | 'exploratory' | 'avoid';
   role: 'direct_follow' | 'selective' | 'discovery_only' | 'wildcard';
   reason: string;
-  /** Lanes this source will serve once adopted. */
-  lanes: Array<'feeds' | 'briefing' | 'classics'>;
   caveats: string[];
   sampleTitles: string[];
   qualityPrior: number;
@@ -109,9 +107,6 @@ export function adoptableSources(
       disposition: candidate.disposition,
       role,
       reason: candidate.reason,
-      // The model assigns lanes per source; fall back to the file default for
-      // candidates that predate the field.
-      lanes: candidate.lanes ?? config.sourcesDefaults.lanes,
       caveats: candidate.caveats ?? [],
       sampleTitles: feed.sample_titles.slice(0, 3),
       qualityPrior: adoption.quality_prior[candidate.disposition] ?? 0.5,
@@ -168,7 +163,6 @@ export function adoptSources(
       feed_url: source.feedUrl,
       // Written out rather than derived at load time, so retuning the adoption
       // table never re-rates a source the reader already accepted.
-      lanes: source.lanes,
       quality_prior: source.qualityPrior,
       volume_budget: source.volumeBudget,
     });

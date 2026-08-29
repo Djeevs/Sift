@@ -30,8 +30,6 @@ export const sourceCandidateSchema = z.object({
   domain: z.string().default(''),
   disposition: z.enum(['known_favorite', 'recommended', 'exploratory', 'avoid']),
   role: z.enum(['direct_follow', 'selective', 'discovery_only', 'wildcard']).optional(),
-  /** Which lanes this source suits. Absent means the configured default. */
-  lanes: z.array(z.enum(['feeds', 'briefing', 'classics'])).min(1).optional(),
   content_areas: z.array(z.string().min(2)).default([]),
   caveats: z.array(z.string().min(2)).default([]),
   reason: z.string().min(5),
@@ -45,26 +43,39 @@ const evidenceItemShape = {
 };
 
 export const onboardingDossierSchema = z.object({
-  version: z.literal(3),
+  version: z.literal(5),
   reading_goal: z.string().min(10),
   executive_taste_summary: z.string().min(10),
   attention_selection_model: z.string().min(10),
-  values_and_outlook: z.array(z.object({
+  /**
+   * A live situation, not durable taste -- a project, a trip, a season of
+   * interest. Kept apart from `stable_interests` so it can be re-asked rather
+   * than silently becoming permanent: `time_horizon` says how long it should
+   * be trusted without confirmation, and `refresh_required` flags one that
+   * has probably already outlived its relevance.
+   */
+  contextual_interests: z.array(z.object({
+    id: z.string().regex(/^[a-z0-9][a-z0-9_]*$/),
     description: z.string().min(5),
+    effect_on_recommendations: z.string().min(5),
+    strength: z.enum(['low', 'moderate', 'high']).default('moderate'),
+    time_horizon: z.enum(['days', 'weeks', 'months', 'indefinite', 'unknown']).default('unknown'),
+    refresh_required: z.boolean().default(false),
     ...evidenceItemShape,
   })).default([]),
-  current_context: z.array(z.object({
-    description: z.string().min(5),
-    relevance_to_reading: z.string().min(5),
-    ...evidenceItemShape,
-  })).default([]),
-  interests: z.array(z.object({
+  stable_interests: z.array(z.object({
     id: z.string().regex(/^[a-z0-9][a-z0-9_]*$/),
     label: z.string().min(2),
     tier: z.enum(['core', 'high_selective', 'conditional', 'low', 'unwanted']),
     priority: z.number().min(0).max(10),
     preferred_coverage: z.array(z.string().min(2)).default([]),
+    avoid_coverage: z.array(z.string().min(2)).default([]),
     conditions: z.array(z.string().min(2)).default([]),
+    saturation: z.object({
+      repeat_tolerance: z.enum(['high', 'moderate', 'low', 'very_low', 'unknown']).default('unknown'),
+      new_angle_required: z.boolean().default(false),
+      guidance: z.string().default(''),
+    }).default({}),
     medium_fit: z.enum(['text_specific', 'cross_medium', 'stronger_elsewhere', 'unknown']).default('unknown'),
     ...evidenceItemShape,
   })).min(1),
@@ -73,52 +84,43 @@ export const onboardingDossierSchema = z.object({
     why_it_matters: z.string().min(5),
     ...evidenceItemShape,
   })).default([]),
-  rewarding_qualities: z.array(z.object({
-    quality: z.string().min(2),
+  /** One signed scale rather than separate rewarding/unrewarding lists, so a
+   * quality that is mildly nice in one context and a hard filter in another
+   * (`conditions`) does not have to be split across two arrays that disagree. */
+  taste_signals: z.array(z.object({
+    signal: z.string().min(2),
+    effect: z.enum([
+      'strong_positive', 'moderate_positive', 'weak_positive',
+      'weak_negative', 'moderate_negative', 'strong_negative', 'hard_filter',
+    ]),
     why: z.string().min(5),
-    strength: z.enum(['strong', 'moderate', 'weak']),
+    conditions: z.array(z.string().min(2)).default([]),
     ...evidenceItemShape,
   })).default([]),
-  unrewarding_qualities: z.array(z.object({
-    quality: z.string().min(2),
-    why: z.string().min(5),
-    strength: z.enum(['strong', 'moderate', 'weak']),
+  semantic_anchors: z.array(z.object({
+    id: z.string().regex(/^[a-z0-9][a-z0-9_]*$/),
+    /** Links back to `stable_interests[].id` when this anchor sharpens one. */
+    interest_id: z.string().nullable().default(null),
+    description: z.string().min(10),
+    priority: z.number().min(0).max(10).default(5),
     ...evidenceItemShape,
   })).default([]),
-  content_mix: z.object({
-    breaking_news: confidenceSchema,
-    reporting: confidenceSchema,
-    analysis: confidenceSchema,
-    narrative: confidenceSchema,
-    criticism: confidenceSchema,
-    practical: confidenceSchema,
-    entertainment: confidenceSchema,
-    serendipity: confidenceSchema,
-  }),
-  timeliness_profile: z.object({
-    news_vs_interpretation: z.string().min(5),
-    loses_value_quickly: z.array(z.string().min(2)).default([]),
-    remains_valuable: z.array(z.string().min(2)).default([]),
-    archival_appetite: z.enum(['low', 'selective', 'high', 'unknown']),
-    age_guidance: z.string().min(3),
+  avoid_anchors: z.array(z.object({
+    id: z.string().regex(/^[a-z0-9][a-z0-9_]*$/),
+    description: z.string().min(10),
+    strength: z.enum(['strong', 'moderate', 'weak']).default('moderate'),
     ...evidenceItemShape,
-  }),
+  })).default([]),
   depth_length_profile: z.object({
     summary: z.string().min(5),
     longform_payoff_threshold: z.string().min(5),
     technical_complexity: z.string().min(3),
     ...evidenceItemShape,
   }),
-  medium_profile: z.array(z.object({
-    subject_or_style: z.string().min(2),
-    fit: z.enum(['text_specific', 'cross_medium', 'stronger_elsewhere', 'unknown']),
-    preferred_medium: z.enum(['text', 'video', 'podcast', 'books', 'academic_papers', 'any', 'unknown']),
-    transferable_qualities: z.array(z.string().min(2)).default([]),
-    ...evidenceItemShape,
-  })).default([]),
-  entertainment_profile: z.object({
-    role_in_ranking: z.string().min(5),
-    rewarding_forms: z.array(z.string().min(2)).default([]),
+  timeliness_profile: z.object({
+    summary: z.string().min(5),
+    loses_value_quickly: z.array(z.string().min(2)).default([]),
+    remains_valuable: z.array(z.string().min(2)).default([]),
     ...evidenceItemShape,
   }),
   exploration_profile: z.object({
@@ -128,17 +130,43 @@ export const onboardingDossierSchema = z.object({
     override_conditions: z.array(z.string().min(2)).default([]),
     ...evidenceItemShape,
   }),
+  /** Specific promising directions, not just a general appetite for them --
+   * each must justify itself against something already established. */
+  exploration_frontiers: z.array(z.object({
+    description: z.string().min(5),
+    bridge: z.string().min(5),
+    ...evidenceItemShape,
+  })).default([]),
+  medium_profile: z.array(z.object({
+    subject_or_style: z.string().min(2),
+    fit: z.enum(['text_specific', 'cross_medium', 'stronger_elsewhere', 'unknown']),
+    preferred_medium: z.enum(['text', 'video', 'podcast', 'books', 'academic_papers', 'any', 'unknown']),
+    transferable_qualities: z.array(z.string().min(2)).default([]),
+    ...evidenceItemShape,
+  })).default([]),
   professional_personal_boundary: z.object({
     enjoyed_overlap: z.array(z.string().min(2)).default([]),
     useful_but_not_personal: z.array(z.string().min(2)).default([]),
     guidance: z.string().min(5),
     ...evidenceItemShape,
   }),
-  style_references: z.array(z.object({
+  /**
+   * Sources I already have an evidenced relationship with -- not
+   * recommendations. Sift already discovers new sources itself, from this
+   * profile plus what has actually scored well (`npm run sources:suggest`);
+   * an assistant naming publications it merely believes would fit duplicates
+   * that job with none of the evidence, so it does not do it here.
+   *
+   * `scope` keeps "I like their reviews" from becoming "I like everything
+   * from this publication": it names what specifically the evidence covers,
+   * separately from `reason`, which is what the evidence itself establishes.
+   */
+  known_source_evidence: z.array(z.object({
     name: z.string().min(1),
-    relationship: z.enum(['known_favorite', 'style_reference', 'medium_reference']),
-    qualities: z.string().min(5),
-    confidence: confidenceSchema,
+    relationship: z.enum(['known_favorite', 'positive_evidence', 'known_dislike', 'style_reference', 'noisy_but_useful']),
+    scope: z.string().min(5),
+    reason: z.string().min(5),
+    ...evidenceItemShape,
   })).default([]),
   examples: z.array(z.object({
     kind: z.enum(['explicit_positive', 'explicit_negative', 'behavioral', 'reference']),
@@ -147,27 +175,6 @@ export const onboardingDossierSchema = z.object({
     confidence: confidenceSchema,
   })).default([]),
   assistant_preference_hints: assistantPreferenceHintsSchema,
-  interest_anchors: z.array(z.object({
-    id: z.string().regex(/^[a-z0-9][a-z0-9_]*$/),
-    category: z.string().min(1),
-    description: z.string().min(10),
-  })).default([]),
-  avoid_anchors: z.array(z.object({
-    id: z.string().regex(/^[a-z0-9][a-z0-9_]*$/),
-    description: z.string().min(10),
-  })).default([]),
-  source_candidates: z.array(sourceCandidateSchema).default([]),
-  ranking_guidance: z.object({
-    strong_positive_signals: z.array(z.string().min(2)).default([]),
-    moderate_positive_signals: z.array(z.string().min(2)).default([]),
-    weak_positive_signals: z.array(z.string().min(2)).default([]),
-    strong_negative_signals: z.array(z.string().min(2)).default([]),
-    hard_filters: z.array(z.string().min(2)).default([]),
-    override_rules: z.array(z.string().min(2)).default([]),
-    interaction_effects: z.array(z.string().min(2)).default([]),
-    source_level_guidance: z.array(z.string().min(2)).default([]),
-    duplication_and_saturation: z.array(z.string().min(2)).default([]),
-  }),
   contradictions: z.array(z.object({
     tension: z.string().min(5),
     conditions: z.string().min(5),
@@ -255,49 +262,69 @@ export function parseDossier(raw: string): OnboardingDossier {
   throw new Error(`Invalid onboarding dossier:\n${formatZod(current.error)}`);
 }
 
+/**
+ * relationship → the existing source_preferences vocabulary that
+ * config/index.ts already turns into a small bounded quality_prior nudge.
+ * `role` controls how much of that nudge actually applies: "noisy but
+ * useful" is deliberately not a blanket endorsement, so it gets the same
+ * near-zero multiplier `discovery_only` already had.
+ */
+const SOURCE_RELATIONSHIP: Record<string, { disposition: 'known_favorite' | 'recommended' | 'exploratory' | 'avoid'; role: 'direct_follow' | 'selective' | 'discovery_only' } | null> = {
+  known_favorite: { disposition: 'known_favorite', role: 'direct_follow' },
+  positive_evidence: { disposition: 'recommended', role: 'selective' },
+  known_dislike: { disposition: 'avoid', role: 'direct_follow' },
+  noisy_but_useful: { disposition: 'exploratory', role: 'discovery_only' },
+  style_reference: null, // routed to style_references instead; not a "should Sift favour this domain" signal
+};
+
 export function compileTasteProfile(
   dossier: OnboardingDossier,
   preferences: ReaderPreferences = suggestedReaderPreferences(dossier.assistant_preference_hints),
 ): TasteProfile {
   const constraints = preferenceSummary(preferences).join(' ');
-  const mix = Object.entries(dossier.content_mix)
-    .map(([key, value]) => `${key.replaceAll('_', ' ')} ${Math.round(value * 100)}%`)
-    .join(', ');
-  const values = dossier.values_and_outlook.length > 0
-    ? `Values and outlook: ${dossier.values_and_outlook.map((item) => item.description).join('; ')}.`
-    : '';
-  const context = dossier.current_context.length > 0
-    ? `Current context relevant to reading: ${dossier.current_context.map((item) => `${item.description} (${item.relevance_to_reading})`).join('; ')}.`
-    : '';
   const list = (label: string, values: string[]) => values.length > 0 ? `${label}: ${values.join('; ')}.` : '';
   const intersections = dossier.valuable_intersections.map((item) => `${item.description} (${item.why_it_matters})`);
   const medium = dossier.medium_profile.map((item) =>
     `${item.subject_or_style}: ${item.fit}, prefer ${item.preferred_medium}${item.transferable_qualities.length > 0 ? `; transferable qualities ${item.transferable_qualities.join(', ')}` : ''}`);
   const contradictions = dossier.contradictions.map((item) => `${item.tension} (${item.conditions})`);
-  const sourceContext = dossier.source_candidates.map((candidate) =>
-    `${candidate.name} [${candidate.role ?? candidate.disposition}]: ${candidate.reason}${candidate.content_areas.length > 0 ? ` Relevant areas: ${candidate.content_areas.join(', ')}.` : ''}${candidate.caveats.length > 0 ? ` Caveats: ${candidate.caveats.join('; ')}.` : ''}`);
-  const derivedInterestAnchors = dossier.interests
-    .filter((interest) => !['low', 'unwanted'].includes(interest.tier))
-    .map((interest) => ({
-      id: interest.id,
-      category: 'other',
-      text: `${interest.label}: ${[...interest.preferred_coverage, ...interest.conditions].join('; ') || 'recommend only when the treatment is genuinely worthwhile'}`,
-    }));
-  const interestAnchors = dossier.interest_anchors.length > 0
-    ? dossier.interest_anchors.map((anchor) => ({ id: anchor.id, category: anchor.category, text: anchor.description }))
-    : derivedInterestAnchors;
-  const avoidAnchors = new Map(dossier.avoid_anchors.map((anchor) => [anchor.id, anchor.description]));
-  for (const interest of dossier.interests.filter((item) => item.tier === 'unwanted')) {
-    avoidAnchors.set(interest.id, `${interest.label}: ${[...interest.preferred_coverage, ...interest.conditions].join('; ') || 'normally exclude this topic'}`);
+  const frontiers = dossier.exploration_frontiers.map((item) => `${item.description} (bridge: ${item.bridge})`);
+  const tasteSignals = dossier.taste_signals.map((item) =>
+    `${item.effect.replaceAll('_', ' ')}: ${item.signal} — ${item.why}${item.conditions.length > 0 ? ` (${item.conditions.join('; ')})` : ''}`);
+
+  const semanticAnchors = dossier.semantic_anchors.length > 0
+    ? dossier.semantic_anchors.map((anchor) => ({ id: anchor.id, category: 'other', text: anchor.description }))
+    : dossier.stable_interests
+        .filter((interest) => !['low', 'unwanted'].includes(interest.tier))
+        .map((interest) => ({
+          id: interest.id,
+          category: 'other',
+          text: `${interest.label}: ${[...interest.preferred_coverage, ...interest.conditions].join('; ') || 'recommend only when the treatment is genuinely worthwhile'}`,
+        }));
+  const avoidAnchors = new Map(dossier.avoid_anchors.map((anchor) => [anchor.id, { text: anchor.description, strength: anchor.strength }]));
+  for (const interest of dossier.stable_interests.filter((item) => item.tier === 'unwanted')) {
+    avoidAnchors.set(interest.id, {
+      text: `${interest.label}: ${[...interest.preferred_coverage, ...interest.conditions].join('; ') || 'normally exclude this topic'}`,
+      strength: 'moderate' as const,
+    });
+  }
+  // A source comment ("I like their reviews") becomes evidence gated by what
+  // the article is actually about, not a domain-wide boost -- so it is
+  // compiled to an anchor, exactly like any other taste signal. `scope` is
+  // used rather than `reason`: it is the part that says what the evidence
+  // specifically covers.
+  for (const source of dossier.known_source_evidence) {
+    if (source.relationship === 'known_dislike') {
+      avoidAnchors.set(`source_${source.name.toLowerCase().replace(/[^a-z0-9]+/g, '_')}`, { text: `${source.name}: ${source.scope}`, strength: 'moderate' as const });
+    }
   }
 
   return tasteProfileSchema.parse({
-    version: 3,
-    about_me: `${dossier.reading_goal.trim()} ${dossier.executive_taste_summary.trim()} ${values} ${context}`.replace(/\s+/g, ' ').trim(),
-    strong_interests: dossier.interests
+    version: 4,
+    about_me: `${dossier.reading_goal.trim()} ${dossier.executive_taste_summary.trim()}`.replace(/\s+/g, ' ').trim(),
+    strong_interests: dossier.stable_interests
       .filter((interest) => interest.tier === 'core' && interest.confidence >= 0.55)
       .map((interest) => interest.label),
-    topic_priorities: dossier.interests.map((interest) => ({
+    topic_priorities: dossier.stable_interests.map((interest) => ({
       id: interest.id,
       // Shrink uncertain assistant judgments toward neutral instead of silently
       // treating a speculative high or low preference as established taste.
@@ -305,49 +332,37 @@ export function compileTasteProfile(
       guidance: [
         `${interest.tier.replaceAll('_', ' ')} interest.`,
         interest.preferred_coverage.length > 0 ? `Prefer ${interest.preferred_coverage.join(', ')}.` : '',
+        interest.avoid_coverage.length > 0 ? `Avoid ${interest.avoid_coverage.join(', ')}.` : '',
         interest.conditions.length > 0 ? `Conditions: ${interest.conditions.join('; ')}.` : '',
+        interest.saturation.guidance || (interest.saturation.repeat_tolerance !== 'unknown' ? `Repeat tolerance: ${interest.saturation.repeat_tolerance}.` : ''),
         interest.medium_fit === 'stronger_elsewhere' ? 'Text must clear a higher quality bar because another medium is usually preferred.' : '',
       ].filter(Boolean).join(' '),
     })),
-    positive_content_traits: dossier.rewarding_qualities
-      .filter((item) => item.confidence >= 0.35)
-      .map((item) => `${item.strength}: ${item.quality} — ${item.why}`),
-    negative_content_traits: dossier.unrewarding_qualities
-      .filter((item) => item.confidence >= 0.35)
-      .map((item) => `${item.strength}: ${item.quality} — ${item.why}`),
+    positive_content_traits: dossier.taste_signals
+      .filter((item) => item.effect.endsWith('positive') && item.confidence >= 0.35)
+      .map((item) => `${item.effect.replace('_positive', '')}: ${item.signal} — ${item.why}`),
+    negative_content_traits: dossier.taste_signals
+      .filter((item) => (item.effect.endsWith('negative') || item.effect === 'hard_filter') && item.confidence >= 0.35)
+      .map((item) => `${item.effect === 'hard_filter' ? 'hard filter' : item.effect.replace('_negative', '')}: ${item.signal} — ${item.why}`),
     editorial_notes: [
       `Attention selection model: ${dossier.attention_selection_model.trim()}`,
-      `Desired portfolio mix: ${mix}.`,
       list('Especially valuable intersections', intersections),
-      `Timeliness: ${dossier.timeliness_profile.news_vs_interpretation} Archival appetite is ${dossier.timeliness_profile.archival_appetite}; ${dossier.timeliness_profile.age_guidance}`,
+      `Timeliness: ${dossier.timeliness_profile.summary}`,
       list('Content that loses value quickly', dossier.timeliness_profile.loses_value_quickly),
       list('Content that remains valuable', dossier.timeliness_profile.remains_valuable),
       `Depth and length: ${dossier.depth_length_profile.summary} Longform bar: ${dossier.depth_length_profile.longform_payoff_threshold} Technical complexity: ${dossier.depth_length_profile.technical_complexity}`,
       list('Medium-specific guidance', medium),
-      `Entertainment: ${dossier.entertainment_profile.role_in_ranking}${dossier.entertainment_profile.rewarding_forms.length > 0 ? ` Rewarding forms: ${dossier.entertainment_profile.rewarding_forms.join(', ')}.` : ''}`,
       `Exploration: ${dossier.exploration_profile.frequency}; execution override ${dossier.exploration_profile.execution_override_strength}/10. ${dossier.exploration_profile.unfamiliar_topic_quality_bar}`,
       list('Exploration override conditions', dossier.exploration_profile.override_conditions),
+      list('Specific exploration frontiers', frontiers),
       `Professional versus personal: ${dossier.professional_personal_boundary.guidance}`,
       list('Enjoyed professional overlap', dossier.professional_personal_boundary.enjoyed_overlap),
       list('Useful but not personal reading', dossier.professional_personal_boundary.useful_but_not_personal),
-      list('Strong positive ranking signals', dossier.ranking_guidance.strong_positive_signals),
-      list('Moderate positive ranking signals', dossier.ranking_guidance.moderate_positive_signals),
-      list('Weak positive ranking signals', dossier.ranking_guidance.weak_positive_signals),
-      list('Strong negative ranking signals', dossier.ranking_guidance.strong_negative_signals),
-      list('Hard filters', dossier.ranking_guidance.hard_filters),
-      list('Override rules', dossier.ranking_guidance.override_rules),
-      list('Interaction effects', dossier.ranking_guidance.interaction_effects),
-      list('Source-level guidance', dossier.ranking_guidance.source_level_guidance),
-      list('Source candidate context', sourceContext),
-      list('Duplication and saturation', dossier.ranking_guidance.duplication_and_saturation),
+      list('Taste signals', tasteSignals),
       list('Useful tensions', contradictions),
       constraints,
       list('Uncertainties to revisit after real feedback', dossier.uncertainties),
     ].filter(Boolean).join(' '),
-    style_references: dossier.style_references.map((reference) => ({
-      name: reference.name,
-      guidance: reference.qualities,
-    })),
     positive_examples: dossier.examples.filter((example) => example.kind === 'explicit_positive').map((example) => ({
       description: example.title_or_description,
       reason: example.reason,
@@ -356,17 +371,31 @@ export function compileTasteProfile(
       description: example.title_or_description,
       reason: example.reason,
     })),
+    style_references: dossier.known_source_evidence
+      .filter((source) => source.relationship === 'style_reference')
+      .map((source) => ({ name: source.name, guidance: source.scope })),
     reader_preferences: preferences,
-    source_preferences: dossier.source_candidates.map((candidate) => ({
-      name: candidate.name,
-      domain: candidate.domain,
-      disposition: candidate.disposition,
-      role: candidate.role ?? null,
-      reason: candidate.reason,
-      confidence: candidate.confidence,
+    contextual_interests: dossier.contextual_interests.map((item) => ({
+      id: item.id,
+      description: item.description,
+      effect_on_recommendations: item.effect_on_recommendations,
+      time_horizon: item.time_horizon === 'unknown' ? 'months' : item.time_horizon,
+      strength: item.strength,
+      created_at: new Date().toISOString().slice(0, 10),
     })),
-    interest_anchors: interestAnchors,
-    avoid_anchors: [...avoidAnchors].map(([id, text]) => ({ id, text })),
+    source_preferences: dossier.known_source_evidence
+      .filter((source) => SOURCE_RELATIONSHIP[source.relationship])
+      .map((source) => ({
+        name: source.name,
+        domain: '',
+        disposition: SOURCE_RELATIONSHIP[source.relationship]!.disposition,
+        role: SOURCE_RELATIONSHIP[source.relationship]!.role,
+        reason: source.reason,
+        confidence: source.confidence,
+        comment: source.scope,
+      })),
+    interest_anchors: semanticAnchors,
+    avoid_anchors: [...avoidAnchors].map(([id, { text, strength }]) => ({ id, text, strength })),
   });
 }
 
@@ -375,17 +404,17 @@ export function renderProfilePreview(
   preferences: ReaderPreferences,
   preferenceSource: 'completed' | 'defaults' = 'completed',
 ): string {
-  const topics = dossier.interests
+  const topics = dossier.stable_interests
     .slice()
     .sort((a, b) => b.priority - a.priority)
     .map((topic) => `  - ${topic.label}: ${topic.priority}/10, ${topic.tier.replaceAll('_', ' ')} (${topic.basis}, ${Math.round(topic.confidence * 100)}% confidence)`);
-  const sourceGroups = ['known_favorite', 'recommended', 'exploratory', 'avoid'] as const;
-  const sources = sourceGroups.flatMap((disposition) => {
-    const items = dossier.source_candidates.filter((candidate) => candidate.disposition === disposition);
+  const relationshipGroups = ['known_favorite', 'positive_evidence', 'noisy_but_useful', 'style_reference', 'known_dislike'] as const;
+  const sources = relationshipGroups.flatMap((relationship) => {
+    const items = dossier.known_source_evidence.filter((source) => source.relationship === relationship);
     if (items.length === 0) return [];
     return [
-      `  ${disposition.replaceAll('_', ' ')}:`,
-      ...items.map((candidate) => `    - ${candidate.name}${candidate.domain ? ` (${candidate.domain})` : ''}: ${candidate.reason} [${Math.round(candidate.confidence * 100)}%]`),
+      `  ${relationship.replaceAll('_', ' ')}:`,
+      ...items.map((source) => `    - ${source.name}: ${source.scope} [${Math.round(source.confidence * 100)}%]`),
     ];
   });
   const uncertainty = dossier.uncertainties.length > 0
@@ -516,11 +545,18 @@ export function createProfile(options: CreateProfileOptions): CreatedProfile {
   atomicWrite(tastePath, stringifyYaml(taste, { lineWidth: 100 }));
   atomicWrite(resolve(directory, 'onboarding-dossier.json'), `${JSON.stringify(options.dossier, null, 2)}\n`);
   atomicWrite(resolve(directory, 'reader-preferences.json'), `${JSON.stringify(preferences, null, 2)}\n`);
-  atomicWrite(resolve(directory, 'source-candidates.json'), `${JSON.stringify({
-    version: 1,
-    candidates: options.dossier.source_candidates,
-    note: 'Candidate names and domains are evidence, not feed URLs. Validate feeds before adding them to sources.yaml.',
-  }, null, 2)}\n`);
+  // The dossier no longer proposes sources -- that is Sift's own job, done
+  // with more evidence than an assistant has (`npm run sources:suggest`).
+  // Only seed the file if a suggestion run has not already populated it, so
+  // recompiling a dossier never discards candidates already found.
+  const candidatesPath = resolve(directory, 'source-candidates.json');
+  if (!existsSync(candidatesPath)) {
+    atomicWrite(candidatesPath, `${JSON.stringify({
+      version: 1,
+      candidates: [],
+      note: 'Empty until you run: npm run sources:suggest -- --profile <id>. Candidate names and domains are evidence, not feed URLs; validate feeds before adding them to sources.yaml.',
+    }, null, 2)}\n`);
+  }
   atomicWrite(resolve(directory, 'profile-preview.txt'), `${renderProfilePreview(
     options.dossier,
     preferences,

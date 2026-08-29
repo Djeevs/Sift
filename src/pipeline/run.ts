@@ -22,8 +22,6 @@ import { recordStageCost } from './costs.js';
 import { startJob, setStatus } from './journal.js';
 import { logger } from '../util/log.js';
 import { withLock } from '../util/lock.js';
-import { runClassics } from '../classics/index.js';
-import { runBriefing } from '../briefing/index.js';
 
 const log = logger('pipeline');
 
@@ -36,8 +34,7 @@ const log = logger('pipeline');
  *   4 Luna             CHEAP      "what plausibly deserves human attention?"
  *   5 Terra            EXPENSIVE  "what genuinely deserves human attention?"
  *   6 Final ranking    FREE       "what combination creates the best edition?"
- *   7 Briefing         FREE       "what would I regret not knowing right now?"
- *   8 Generated feeds
+ *   7 Generated feeds
  *
  * Each stage spends more per item than the last, and each only sees what earned
  * the right to be there. Every stage is independently rerunnable and driven by
@@ -63,8 +60,6 @@ export interface PipelineResult {
   terra?: Record<string, unknown>;
   edition?: Record<string, unknown>;
   alternate?: Record<string, unknown>;
-  classics?: Record<string, unknown>;
-  briefing?: Record<string, unknown>;
   sourceStats?: Record<string, number>;
   budget?: Record<string, unknown>;
   allocation?: Record<string, unknown>;
@@ -335,32 +330,6 @@ async function runPipelineLocked(
       if (suppressed > 0) {
         log.info(`suppressed ${suppressed} episodes already surfaced as an article's audio`);
       }
-
-      // --- 7. The briefing --------------------------------------------------
-      // A digest of evaluations the funnel has already paid for, built when a
-      // configured slot is due. It calls no model and writes no
-      // published_feed_items rows, so it neither costs anything nor takes an
-      // article away from the feeds above; src/briefing/index.ts says why both
-      // matter.
-      //
-      // Inside `skipPublish` because that flag means "change nothing a reader
-      // would see", and an edition is exactly that.
-      const briefing = runBriefing(db, config, { now });
-      result.briefing = {
-        built: briefing.built,
-        slot: briefing.slot,
-        items: briefing.selected,
-        candidates: briefing.candidates,
-        reason: briefing.reason,
-      };
-    }
-
-    // Archival discovery is independent of the daily funnel but shares its
-    // article store, extraction, feedback and model budget. A source-scoped
-    // diagnostic run must not unexpectedly launch a cross-web archive crawl.
-    if (!opts.sourceIds) {
-      const classics = await runClassics(db, config, ai, { publish: !opts.skipPublish, now });
-      result.classics = { ...classics };
     }
 
     // --- Audit bookkeeping -------------------------------------------------

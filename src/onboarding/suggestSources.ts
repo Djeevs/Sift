@@ -1,12 +1,11 @@
 /**
- * Ask the deep model which sources this reader should follow.
+ * Ask the deep model which sources this reader's feed should follow.
  *
  * The onboarding dossier is already almost entirely criteria — interests,
- * rewarding and unrewarding qualities, timeliness, medium fit. Only
- * `source_candidates` names actual publications, and that put the assistant in
- * charge of a decision it is poorly placed to make: it knows the reader, not
- * the shape of Sift's three lanes, and it proposes from memory rather than
- * from anything Sift has observed.
+ * taste signals, timeliness, medium fit. It records evidence about sources the
+ * reader already has a relationship with, but it does not propose new ones:
+ * an assistant knows the reader, not what has actually performed, so having it
+ * name publications from memory duplicated a job Sift is better placed to do.
  *
  * So the assistant supplies context and Sift does the choosing. This runs the
  * *deep* model, not the cheap one: it is a handful of calls per reader, ever,
@@ -28,7 +27,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { z } from 'zod';
 import type { Db } from '../db/index.js';
-import type { AppConfig } from '../config/index.js';
+import { sourceCategories, type AppConfig } from '../config/index.js';
 import type { AiClient } from '../ai/client.js';
 import { loadPrompt, render, tasteVars, untrustedDataBlock } from '../ai/prompts.js';
 import { parseModelJson } from '../ai/json.js';
@@ -42,15 +41,18 @@ const log = logger('suggest');
  * A tolerant reading of the model's reply.
  *
  * The stored candidate schema is strict, and rightly so — but applying it
- * directly to model output threw away six good proposals because one said
- * `"observed_fit"` where the enum wanted `"observed"`. Every other model
- * boundary in Sift coerces rather than rejects, for the same reason: a whole
- * response is too much to lose to one unrecognised word.
+ * directly to model output threw away good proposals over one field the model
+ * phrased differently than the enum wanted. Every other model boundary in
+ * Sift coerces rather than rejects, for the same reason: a whole response is
+ * too much to lose to one unrecognised word.
  */
-const LANES = ['feeds', 'briefing', 'classics'] as const;
-type Lane = (typeof LANES)[number];
 const ROLES = ['direct_follow', 'selective', 'discovery_only', 'wildcard'] as const;
 type Role = (typeof ROLES)[number];
+const SOURCE_TYPES = ['publication', 'writer', 'blog', 'newsletter', 'specialist_outlet', 'institution', 'section'] as const;
+const YIELDS = ['high', 'medium', 'low'] as const;
+type Yield = (typeof YIELDS)[number];
+const BASES = ['explicit_user_source', 'reader_profile', 'observed_performance', 'coverage_gap', 'exploration'] as const;
+type ProposalBasis = (typeof BASES)[number];
 
 const nearest = <T extends string>(allowed: readonly T[], fallback: T) => (value: unknown): T => {
   const raw = String(value ?? '').trim().toLowerCase().replace(/[\s-]+/g, '_');
@@ -59,6 +61,8 @@ const nearest = <T extends string>(allowed: readonly T[], fallback: T) => (value
     ?? fallback;
 };
 const asRole = nearest(ROLES, 'selective');
+const asSourceType = nearest(SOURCE_TYPES, 'publication');
+const asYield = nearest(YIELDS, 'medium');
 const asDisposition = nearest(['known_favorite', 'recommended', 'exploratory', 'avoid'] as const, 'exploratory');
 
 const unit = (value: unknown, fallback: number): number => {
@@ -66,36 +70,22 @@ const unit = (value: unknown, fallback: number): number => {
   return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : fallback;
 };
 
-export interface LaneVerdict {
-  lane: Lane;
-  fit: number;
-  role: Role;
-  reason: string;
-}
-
 export interface ProposedSource {
   name: string;
   domain: string;
   homepageUrl: string;
   sourceType: string;
-  lanes: LaneVerdict[];
+  role: Role;
   contentAreas: string[];
   caveats: string[];
   incrementalValue: string;
-  expectedYield: string;
+  expectedYield: Yield;
   disposition: 'known_favorite' | 'recommended' | 'exploratory' | 'avoid';
-  basis: string[];
+  reason: string;
+  basis: ProposalBasis[];
   confidence: number;
 }
 
-/**
- * Parse one candidate from the v2 shape.
- *
- * v2 scores each lane separately — a wire can be a strong `briefing` fit and a
- * weak `feeds` one — so `lanes` is an object of verdicts rather than a list of
- * names, and `role` lives inside each lane rather than at the top. A lane the
- * model set to null, or filled with nonsense, is simply not assigned.
- */
 function parseCandidate(raw: unknown): ProposedSource | null {
   if (!raw || typeof raw !== 'object') return null;
   const record = raw as Record<string, unknown>;
@@ -110,38 +100,26 @@ function parseCandidate(raw: unknown): ProposedSource | null {
   if (!domain && homepageUrl) domain = hostOf(homepageUrl)?.replace(/^www\./, '') ?? '';
   if (!domain) return null;
 
-  const laneRecord = (record.lanes ?? {}) as Record<string, unknown>;
-  const lanes: LaneVerdict[] = [];
-  for (const lane of LANES) {
-    const verdict = laneRecord[lane];
-    if (!verdict || typeof verdict !== 'object') continue;
-    const entry = verdict as Record<string, unknown>;
-    lanes.push({
-      lane,
-      fit: unit(entry.fit, 0.5),
-      role: asRole(entry.role),
-      reason: String(entry.reason ?? '').trim(),
-    });
-  }
-  // "Every candidate must qualify for at least one lane." Enforced here so the
-  // rule holds whether or not the model followed it.
-  if (lanes.length === 0) return null;
-
   const list = (value: unknown): string[] =>
     Array.isArray(value) ? value.map((entry) => String(entry ?? '').trim()).filter(Boolean) : [];
+  const basisRaw = list(record.basis);
+  const basis = basisRaw.length > 0
+    ? basisRaw.map((entry) => BASES.find((b) => b === entry.trim().toLowerCase()) ?? null).filter((b): b is ProposalBasis => b !== null)
+    : [];
 
   return {
     name,
     domain,
     homepageUrl,
-    sourceType: String(record.source_type ?? 'publication').trim().toLowerCase(),
-    lanes: lanes.sort((a, b) => b.fit - a.fit),
+    sourceType: asSourceType(record.source_type),
+    role: asRole(record.role),
     contentAreas: list(record.content_areas),
     caveats: list(record.caveats),
     incrementalValue: String(record.incremental_value ?? '').trim(),
-    expectedYield: String(record.expected_yield ?? '').trim(),
+    expectedYield: asYield(record.expected_yield),
     disposition: asDisposition(record.disposition),
-    basis: list(record.basis),
+    reason: String(record.reason ?? '').trim(),
+    basis: basis.length > 0 ? basis : ['reader_profile'],
     confidence: unit(record.confidence, 0.5),
   };
 }
@@ -193,16 +171,35 @@ export function observedDomains(db: Db, limit = 20): ObservedDomain[] {
   }
 }
 
+/**
+ * How thinly each category is currently covered, weakest first.
+ *
+ * A category several sources declare as their strongest is well covered; one
+ * no enabled source declares at all is a real gap. Deliberately coarse: this
+ * is context for the model's judgement, not a target to fill mechanically.
+ */
+export function coverageSummary(config: AppConfig): string {
+  const counts = new Map<string, number>(config.categories.map((c) => [c, 0]));
+  for (const source of config.sources) {
+    if (!source.enabled) continue;
+    const top = sourceCategories(source)[0];
+    if (top && counts.has(top)) counts.set(top, (counts.get(top) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .sort((a, b) => a[1] - b[1])
+    .map(([category, count]) => `- ${category}: ${count} source${count === 1 ? '' : 's'} primarily covering it${count === 0 ? ' (gap)' : ''}`)
+    .join('\n');
+}
+
 type StoredCandidate = z.output<typeof sourceCandidateSchema>;
 
 /**
  * Fold new proposals into the stored list.
  *
- * A re-proposal replaces the stored one rather than being skipped. A later run
- * has more evidence — more observed domains, a newer prompt — and the first
- * version of this kept whichever verdict arrived first, so re-running with the
- * lane-aware v2 prompt left three sources still carrying v1's single-lane
- * guesses.
+ * A re-proposal replaces the stored one rather than being skipped. A later
+ * run has more evidence — more observed domains, more coverage history — so
+ * keeping whichever verdict arrived first would leave stale guesses in place
+ * indefinitely.
  */
 export function mergeCandidates(
   previous: StoredCandidate[],
@@ -239,35 +236,35 @@ export interface SuggestionResult {
   spendUsd: number;
 }
 
-/**
- * Project a v2 verdict onto the candidate shape the rest of Sift reads.
- *
- * v2 scores each lane separately, which the stored source cannot express: a
- * `sources.yaml` entry has one `volume_budget`, not one per lane. The role of
- * the best-fitting lane wins, because that is the lane the source is really
- * being added for, and the per-lane reasoning is preserved in the text rather
- * than silently dropped.
- */
+const BASIS_TO_EVIDENCE: Record<ProposalBasis, 'explicit' | 'observed' | 'inferred'> = {
+  explicit_user_source: 'explicit',
+  observed_performance: 'observed',
+  reader_profile: 'inferred',
+  coverage_gap: 'inferred',
+  exploration: 'inferred',
+};
+
+/** Project a verdict onto the candidate shape the rest of Sift reads. */
 function toStoredCandidate(proposal: ProposedSource): z.output<typeof sourceCandidateSchema> {
-  const best = proposal.lanes[0]!;
-  const reason = [
-    proposal.incrementalValue,
-    ...proposal.lanes.map((lane) => `${lane.lane}: ${lane.reason}`),
-  ].filter(Boolean).join(' ');
+  const reason = [proposal.reason, proposal.incrementalValue].filter(Boolean).join(' ');
+  // The strongest evidence kind present wins: explicit user evidence beats
+  // observed performance, which beats a plausible inference.
+  const evidence = proposal.basis.includes('explicit_user_source')
+    ? 'explicit'
+    : proposal.basis.includes('observed_performance')
+      ? 'observed'
+      : BASIS_TO_EVIDENCE[proposal.basis[0] ?? 'reader_profile'];
   return {
     name: proposal.name,
     domain: proposal.domain,
     disposition: proposal.disposition,
-    role: best.role,
-    lanes: proposal.lanes.map((lane) => lane.lane),
+    role: proposal.role,
     content_areas: proposal.contentAreas,
     // Expected yield is a caveat in everything but name: it is what the reader
     // needs to know about how much filtering this source will require.
-    caveats: [...proposal.caveats, ...(proposal.expectedYield ? [`expected yield: ${proposal.expectedYield}`] : [])],
+    caveats: [...proposal.caveats, `expected yield: ${proposal.expectedYield}`],
     reason: reason || `${proposal.name} (${proposal.sourceType})`,
-    // The stored enum predates v2's richer list; observed evidence is the only
-    // distinction the downstream prior actually uses.
-    basis: proposal.basis.includes('observed_domains') ? 'observed' : 'inferred',
+    basis: evidence,
     confidence: proposal.confidence,
   };
 }
@@ -289,6 +286,20 @@ export async function suggestSources(
   const max = options.maxCandidates ?? config.suggestion.max_candidates;
   const prompt = loadPrompt(config, config.suggestion.prompt);
 
+  const taste = tasteVars(config.taste);
+  const readerProfile = [
+    taste.ABOUT_ME,
+    taste.STRONG_INTERESTS ? `Strong interests: ${taste.STRONG_INTERESTS}` : '',
+    taste.TOPIC_PRIORITIES,
+    taste.POSITIVE_TRAITS ? `Rewarding: ${taste.POSITIVE_TRAITS}` : '',
+    taste.NEGATIVE_TRAITS ? `Unrewarding: ${taste.NEGATIVE_TRAITS}` : '',
+    taste.EDITORIAL_NOTES,
+  ].filter(Boolean).join('\n\n');
+
+  const userSources = config.taste.source_preferences
+    .map((pref) => `- ${pref.name}${pref.domain ? ` (${pref.domain})` : ''}: ${pref.comment ?? pref.reason} [${pref.disposition.replaceAll('_', ' ')}]`)
+    .join('\n');
+
   const existing = config.sources.map((source) => {
     const host = hostOf(source.feed_url)?.replace(/^www\./, '') ?? '';
     return `- ${source.name}${host ? ` (${host})` : ''}`;
@@ -296,15 +307,19 @@ export async function suggestSources(
   const observed = db ? observedDomains(db) : [];
 
   const system = render(prompt.body, {
-    ...tasteVars(config.taste),
+    READER_PROFILE: readerProfile,
+    USER_SOURCES: userSources
+      ? untrustedDataBlock('sources the reader explicitly provided', userSources)
+      : '(none supplied)',
     EXISTING_SOURCES: existing.join('\n') || '(none yet)',
     // Hostnames harvested from fetched pages, so they are delimited as
     // untrusted even though Sift derived the list itself.
-    OBSERVED_DOMAINS: observed.length > 0
-      ? untrustedDataBlock('observed domains', observed
+    OBSERVED_SOURCE_PERFORMANCE: observed.length > 0
+      ? untrustedDataBlock('observed source performance', observed
           .map((entry) => `- ${entry.domain}: ${entry.items} articles, median score ${entry.medianScore.toFixed(2)}`)
           .join('\n'))
       : '(no reading history yet — propose from the reader profile alone)',
+    COVERAGE_SUMMARY: coverageSummary(config) || '(no categories configured)',
     MAX_CANDIDATES: String(max),
   });
 
@@ -313,7 +328,7 @@ export async function suggestSources(
     'deep',
     [
       { role: 'system', content: system },
-      { role: 'user', content: 'Propose sources for this reader now.' },
+      { role: 'user', content: 'Propose sources for this reader’s feed now.' },
     ],
     // A list of publications with reasons is far longer than the
     // single-article verdict models.yaml sizes the default for.

@@ -25,9 +25,9 @@
 # models.yaml sizes max_output_tokens for -- at that limit the reply truncated
 # and produced no candidates at all.
 suggestion:
-  # v2 scores each lane separately and judges incremental value against the
-  # sources already followed, rather than proposing well-regarded publications.
-  prompt: source-discovery-v2
+  # Judges incremental value against the sources already followed and what has
+  # actually performed, rather than proposing well-regarded publications.
+  prompt: feed-source-discovery-v2
   max_candidates: 12
   max_output_tokens: 4000
 
@@ -37,17 +37,6 @@ defaults:
   enabled: true
   access: free
   item_kind: article
-  # Which lanes a source may reach, unless it says otherwise.
-  #
-  # feeds     the six generated feeds read in Reeder
-  # briefing  the twice-daily digest
-  # classics  archival mining of a back catalogue — opt in per source, since
-  #           most sites have no archive worth searching
-  #
-  # Narrowing a source's lanes never stops it being ingested or evaluated, only
-  # where its items may surface, so it keeps informing clustering and saturation
-  # for lanes it cannot appear in.
-  lanes: [feeds, briefing]
   quality_prior: 0.55
   volume_budget: 1.0
   exploration_floor: 0.08
@@ -57,21 +46,6 @@ defaults:
     default: 0.60
 
 sources:
-
-  # Storage identity for candidates found outside configured feeds. It is never
-  # polled or eligible for ordinary editions; the Classics lane owns it.
-  - id: classics_archive
-    name: "Sift Classics Discovery"
-    feed_url: https://hn.algolia.com/api/v1/search
-    enabled: false
-    publishable: false
-    quality_prior: 0.50
-    volume_budget: 0
-    exploration_floor: 0
-    category_priors:
-      default: 0.35
-    feed_weights:
-      default: 0.00
 
   - id: simon_willison
     name: "Simon Willison"

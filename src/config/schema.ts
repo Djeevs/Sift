@@ -8,9 +8,7 @@ import { z } from 'zod';
  *   models.yaml         stage 4 / stage 5 models, semantic provider
  *   free-ranking.yaml   stage 2 rules, stage 3 free score
  *   final-ranking.yaml  stage 4/5 gating, stage 6 portfolio construction
- *   feed-config.yaml    the six always-on generated feeds
- *   classics.yaml       the optional archival lane
- *   briefing.yaml       the optional twice-daily digest
+ *   feed-config.yaml    the six generated feeds
  *   budget.yaml         spend limits, operating mode, Terra allocation
  *   pipeline.yaml       mechanics: fetch, extract, cluster, feedback, learning
  *
@@ -77,21 +75,6 @@ export const sourceSchema = z.object({
     })
     .optional(),
 
-  /**
-   * Which lanes this source may reach.
-   *
-   * The three lanes want different things, so tying them to one list was wrong.
-   * A high-volume wire is too noisy for a feed but ideal in a ten-line digest;
-   * a slow essay site is the reverse. `classics` is different in kind — an
-   * archive to search rather than a feed to poll — so a source opts into it
-   * only when its back catalogue is worth mining.
-   *
-   * Defaults to feeds and briefing: the lanes a conventional RSS source serves.
-   * Narrowing this never changes what is ingested or evaluated, only where an
-   * item may surface, so an item can still inform clustering and saturation for
-   * a lane it cannot itself appear in.
-   */
-  lanes: z.array(z.enum(['feeds', 'briefing', 'classics'])).min(1).optional(),
   /** How likely an item from here deserves deeper inspection (stage 3/4). */
   quality_prior: probability.optional(),
   /** How much attention this source may request. Compresses its decay curve. */
@@ -113,7 +96,6 @@ export const sourcesFileSchema = z.object({
       enabled: z.boolean().default(true),
       access: z.enum(['free', 'mixed', 'paywalled']).default('free'),
       item_kind: z.enum(['article', 'product']).default('article'),
-      lanes: z.array(z.enum(['feeds', 'briefing', 'classics'])).min(1).default(['feeds', 'briefing']),
       quality_prior: probability.default(0.55),
       volume_budget: z.number().min(0).max(2).default(1),
       exploration_floor: probability.default(0.08),
@@ -143,7 +125,7 @@ export const sourcesFileSchema = z.object({
   suggestion: z
     .object({
       /** Which prompt version proposes sources. Add a new file, point here. */
-      prompt: z.string().min(1).default('source-discovery-v2'),
+      prompt: z.string().min(1).default('feed-source-discovery-v2'),
       max_candidates: z.number().int().min(1).max(40).default(12),
       max_output_tokens: z.number().int().positive().default(4000),
     })
@@ -204,26 +186,8 @@ export const paywallPolicySchema = z.enum(['free_only', 'subscribed_publications
 export const freshnessBalanceSchema = z.enum(['timely', 'balanced', 'evergreen']);
 export const preferredMediumSchema = z.enum(['text', 'video', 'podcast', 'any']);
 
-/**
- * The two editorial lanes a reader may decline.
- *
- * Both are additive rather than corrective: switching one off removes a feed,
- * it never changes how the other feeds rank. That is why they are safe to
- * default on and safe to turn off at any time — no threshold needs
- * recalibrating either way.
- */
-export const optionalFeedsSchema = z
-  .object({
-    /** The twice-daily digest of the top items, as one article per slot. */
-    briefing: z.boolean().default(true),
-    /** One exceptional older article a day. */
-    classics: z.boolean().default(true),
-  })
-  .default({});
-
 export const readerPreferencesSchema = z.object({
   version: z.literal(1).default(1),
-  optional_feeds: optionalFeedsSchema,
   attention_budget: attentionBudgetSchema.default('15_30'),
   article_length: articleLengthSchema.default('long_when_exceptional'),
   paywall_policy: paywallPolicySchema.default('free_only'),
@@ -249,7 +213,66 @@ export const sourcePreferenceSchema = z.object({
   role: z.enum(['direct_follow', 'selective', 'discovery_only', 'wildcard']).nullable().default(null),
   reason: z.string().min(5),
   confidence: probability,
+  /**
+   * The reader's or assistant's own words about this source, kept verbatim
+   * next to the small bounded prior `reason` justifies. "I like their
+   * reviews" must not become a blanket boost for the whole domain — the
+   * scoped evidence that comment produces lives as an anchor in
+   * `interest_anchors`/`avoid_anchors`, gated by the article's own content,
+   * not by which domain published it.
+   */
+  comment: z.string().optional(),
 });
+
+/**
+ * A preference tied to a live situation rather than durable taste — a
+ * project, a trip, a season of interest in something the reader does not
+ * expect to care about indefinitely.
+ *
+ * Kept structurally separate from `strong_interests`/`topic_priorities` so it
+ * can expire on its own: nothing here is folded into permanent taste, and a
+ * `time_horizon` of anything but `indefinite` is a signal to re-ask, not a
+ * promise the interest still holds.
+ */
+export const contextualInterestSchema = z.object({
+  id: z.string().min(1),
+  description: z.string().min(5),
+  effect_on_recommendations: z.string().default(''),
+  time_horizon: z.enum(['days', 'weeks', 'months', 'indefinite']).default('months'),
+  strength: z.enum(['low', 'moderate', 'high']).default('moderate'),
+  /** ISO date this was recorded. Drives expiry with `time_horizon`. */
+  created_at: z.string().default(() => new Date().toISOString().slice(0, 10)),
+});
+
+export type ContextualInterestInput = z.output<typeof contextualInterestSchema>;
+
+const CONTEXTUAL_INTEREST_TRUST_DAYS: Record<ContextualInterestInput['time_horizon'], number | null> = {
+  days: 14,
+  weeks: 60,
+  months: 180,
+  indefinite: null,
+};
+
+/**
+ * A contextual interest is architecturally separate from durable taste
+ * precisely so it can go stale -- `time_horizon` sets how long it is trusted
+ * without confirmation, well past the horizon itself, since a live project
+ * that lasted "weeks" per the dossier is still worth a lot of benefit of the
+ * doubt at day 61. `indefinite` never expires this way; it is refreshed only
+ * when the reader redoes onboarding or a review flow updates it.
+ */
+export function contextualInterestExpired(item: ContextualInterestInput, now: number = Date.now()): boolean {
+  const trustDays = CONTEXTUAL_INTEREST_TRUST_DAYS[item.time_horizon];
+  if (trustDays === null) return false;
+  const created = Date.parse(item.created_at);
+  if (Number.isNaN(created)) return false;
+  return now - created > trustDays * 86_400_000;
+}
+
+/** Contextual interests still trusted to influence recommendations right now. */
+export function activeContextualInterests(taste: { contextual_interests: ContextualInterestInput[] }, now: number = Date.now()): ContextualInterestInput[] {
+  return taste.contextual_interests.filter((item) => !contextualInterestExpired(item, now));
+}
 
 export const tasteProfileSchema = z.object({
   version: z.number().int().default(1),
@@ -292,8 +315,14 @@ export const tasteProfileSchema = z.object({
   /** Assistant suggestions are evidence, not source definitions. Only matches
    * against validated sources.yaml entries receive a small bounded prior. */
   source_preferences: z.array(sourcePreferenceSchema).default([]),
+  /** Temporary interests, separable from durable taste so they can expire. See `contextualInterestSchema`. */
+  contextual_interests: z.array(contextualInterestSchema).default([]),
   interest_anchors: z.array(interestAnchorSchema).default([]),
-  avoid_anchors: z.array(z.object({ id: z.string().min(1), text: z.string().min(10) })).default([]),
+  avoid_anchors: z.array(z.object({
+    id: z.string().min(1),
+    text: z.string().min(10),
+    strength: z.enum(['strong', 'moderate', 'weak']).default('moderate'),
+  })).default([]),
 });
 
 // ---------------------------------------------------------------------------
@@ -640,127 +669,6 @@ export const feedFileSchema = z.object({
   feeds: z.array(feedConfigSchema).min(1),
 });
 
-// ---------------------------------------------------------------------------
-// classics.yaml
-// ---------------------------------------------------------------------------
-
-const classicsSeedSchema = z.object({
-  url: z.string().url(),
-  title: z.string().min(1),
-  source: z.string().min(1),
-  author: z.string().optional(),
-  published_at: z.string().optional(),
-  discovery_source: z.string().default('curated_seed'),
-});
-
-export const classicsFileSchema = z.object({
-  version: z.number().int().default(1),
-  enabled: z.boolean().default(true),
-  prompt: z.string().default('classics-ranking-v2'),
-  feed: feedConfigSchema,
-  discovery: z
-    .object({
-      min_age_days: z.number().int().positive().default(365),
-      refresh_interval_days: z.number().positive().default(7),
-      max_candidates: z.number().int().positive().default(1_500),
-      prefetch_limit: z.number().int().positive().default(120),
-      model_limit: z.number().int().positive().default(40),
-      historical_hn: z
-        .object({
-          enabled: z.boolean().default(true),
-          start_year: z.number().int().min(2006).default(2007),
-          end_year: z.number().int().min(2006).optional(),
-          min_points: z.number().int().nonnegative().default(150),
-          min_comments: z.number().int().nonnegative().default(20),
-          hits_per_year: z.number().int().min(1).max(1000).default(100),
-        })
-        .default({}),
-      longreads: z
-        .object({
-          enabled: z.boolean().default(true),
-          start_year: z.number().int().min(2009).default(2011),
-          end_year: z.number().int().min(2009).optional(),
-          hits_per_year: z.number().int().min(1).max(100).default(35),
-        })
-        .default({}),
-      curated_seeds: z.array(classicsSeedSchema).default([]),
-    })
-    .default({}),
-  eligibility: z
-    .object({
-      min_body_chars: z.number().int().positive().default(2_500),
-      require_english: z.boolean().default(true),
-      require_readability: z.boolean().default(true),
-      reject_explicitly_paid: z.boolean().default(true),
-    })
-    .default({}),
-  ranking: z
-    .object({
-      min_score: probability.default(0.84),
-      min_predicted_read: probability.default(0.75),
-      min_predicted_payoff: probability.default(0.90),
-      weights: z.record(z.string(), z.number().min(0)).default({}),
-      penalties: z.record(z.string(), z.number().min(0)).default({}),
-      historical_signal_weight: z.number().min(0).max(0.2).default(0.02),
-    })
-    .default({}),
-  publishing: z
-    .object({
-      max_per_run: z.number().int().positive().default(1),
-      max_per_day: z.number().int().positive().default(1),
-      feed_length: z.number().int().positive().default(60),
-      diversity_lookback_days: z.number().int().positive().default(21),
-      max_same_domain_in_lookback: z.number().int().positive().default(1),
-      max_same_category_in_lookback: z.number().int().positive().default(3),
-    })
-    .default({}),
-});
-
-// ---------------------------------------------------------------------------
-// briefing.yaml
-// ---------------------------------------------------------------------------
-
-/** "HH:MM", 24-hour, in the reader's local time. */
-export const briefingTimeSchema = z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'expected a 24-hour "HH:MM" time');
-
-export const briefingFileSchema = z.object({
-  version: z.number().int().default(1),
-  enabled: z.boolean().default(true),
-  /** Reuses the feed contract, so the briefing is scored by `scoreForFeed`. */
-  feed: feedConfigSchema,
-  /** Editions kept in the rendered feed. Two a day, so 60 is a month. */
-  feed_length: z.number().int().positive().default(60),
-  schedule: z
-    .object({
-      times: z.array(briefingTimeSchema).min(1).default(['08:00', '20:00']),
-      /** `local` (host clock) or an IANA zone name. */
-      timezone: z.string().min(1).default('local'),
-      max_lateness_minutes: z.number().int().positive().default(360),
-      /** How often the scheduler checks whether a slot has come due. */
-      check_interval_minutes: z.number().int().positive().default(5),
-    })
-    .default({}),
-  selection: z
-    .object({
-      items: z.number().int().positive().default(10),
-      min_items: z.number().int().positive().default(4),
-      window_hours: z.number().positive().default(14),
-      max_age_hours: z.number().positive().default(36),
-      max_per_cluster: z.number().int().positive().default(1),
-      max_per_source: z.number().int().positive().default(3),
-      repeat_across_editions: z.boolean().default(false),
-    })
-    .default({}),
-  summary: z
-    .object({
-      max_chars: z.number().int().min(40).default(220),
-      sources: z
-        .array(z.enum(['publisher', 'why_it_surfaced']))
-        .min(1)
-        .default(['publisher', 'why_it_surfaced']),
-    })
-    .default({}),
-});
 
 // ---------------------------------------------------------------------------
 // pipeline.yaml
@@ -873,8 +781,6 @@ export const pipelineFileSchema = z.object({
 // ---------------------------------------------------------------------------
 
 export type SourceConfig = z.output<typeof sourceSchema> & {
-  /** Always resolved by the loader, from the source or the file defaults. */
-  lanes: Array<'feeds' | 'briefing' | 'classics'>;
   feed_type: 'article' | 'podcast' | 'linkblog';
   language: string;
   enabled: boolean;
@@ -887,6 +793,9 @@ export type SourceConfig = z.output<typeof sourceSchema> & {
 };
 export type SourceHardRules = z.output<typeof sourceHardRulesSchema>;
 export type TasteProfile = z.output<typeof tasteProfileSchema>;
+export type ContextualInterest = z.output<typeof contextualInterestSchema>;
+export type InterestAnchor = z.output<typeof interestAnchorSchema>;
+export type SourcePreference = z.output<typeof sourcePreferenceSchema>;
 export type ReaderPreferences = z.output<typeof readerPreferencesSchema>;
 export type ModelsConfig = z.output<typeof modelsFileSchema>;
 export type ChatModelConfig = z.output<typeof chatModelSchema>;
@@ -895,9 +804,6 @@ export type FreeRankingConfig = z.output<typeof freeRankingFileSchema>;
 export type FinalRankingConfig = z.output<typeof finalRankingFileSchema>;
 export type FeedConfig = z.output<typeof feedConfigSchema>;
 export type FeedFileConfig = z.output<typeof feedFileSchema>;
-export type ClassicsConfig = z.output<typeof classicsFileSchema>;
-export type BriefingConfig = z.output<typeof briefingFileSchema>;
-export type OptionalFeeds = z.output<typeof optionalFeedsSchema>;
 export type PipelineConfig = z.output<typeof pipelineFileSchema>;
 export type FreshnessCurve = z.output<typeof freshnessCurveSchema>;
 

@@ -19,7 +19,7 @@ ragebait is desirable.
 
 ## How it works
 
-Eight stages. Each spends more per item than the last, and each only sees what
+Seven stages. Each spends more per item than the last, and each only sees what
 earned the right to be there.
 
 ```text
@@ -41,10 +41,7 @@ earned the right to be there.
 6  FINAL RANKING        FREE       "what combination makes the best edition?"
         │                          portfolio construction, not a ranked slice
         ▼
-7  BRIEFING             FREE       "what would I regret not knowing right now?"
-        │                          08:00 and 20:00: the top ten as one article
-        ▼
-8  GENERATED FEEDS  →  Reeder  →  opens + tags  →  slow, bounded learning
+7  GENERATED FEEDS  →  Reeder  →  opens + tags  →  slow, bounded learning
 ```
 
 The principle: **spend progressively more computation only as an item earns the
@@ -168,17 +165,20 @@ do not continue to onboarding: commands such as `tsx` will be unavailable until
 `npm ci` completes successfully.
 
 The ChatGPT prompt asks at most three high-information taste/source questions.
-Its dossier v3 models attention selection rather than producing a generic
-interest summary: interest tiers, topic-versus-execution tradeoffs, source roles,
-medium boundaries, freshness, depth, duplication, and evidence confidence all
-compile into ranking inputs. It does not ask the generic operational questions
-Sift owns. The CLI then confirms attention budget, length, paywalls, languages,
-freshness, serendipity, preferred voices, and subject-specific medium choices.
-Use `--skip-preferences` for conservative Sift defaults or `--preferences-file
-FILE` for a reviewed JSON configuration.
+Its dossier v5 models attention selection rather than producing a generic
+interest summary: interest tiers, topic-versus-execution tradeoffs, evidenced
+source relationships, medium boundaries, freshness, depth, duplication, and
+evidence confidence all compile into ranking inputs. It does not propose new
+sources — Sift discovers those itself, from this profile plus what has
+actually performed (`npm run sources:suggest`) — and it does not ask the
+generic operational questions Sift owns. The CLI then confirms attention
+budget, length, paywalls, languages, freshness, serendipity, preferred voices,
+and subject-specific medium choices. Use `--skip-preferences` for
+conservative Sift defaults or `--preferences-file FILE` for a reviewed JSON
+configuration.
 
 Before writing a profile, token, or database path, Sift prints a readable preview
-of the compiled interests, preferences, source candidates, confidence, and
+of the compiled interests, preferences, known-source evidence, confidence, and
 uncertainties. Type `approve` to continue. For automation, first run `--preview`,
 then rerun with `--approve` only after reviewing the same inputs:
 
@@ -366,8 +366,7 @@ feedback and publication remain deployment concerns per profile.
 | `npm run share-package` | Create a tarball that excludes all private/runtime material |
 | `npm run sources:discover` | Safely discover and validate feeds for an approved profile's source candidates; report only |
 | `npm run check-sources` | Verify every feed URL still resolves and parses |
-| `npm run classics` | Refresh archival discovery, verify access, selectively rank, and publish at most one Classic |
-| `npm run briefing` | Build the due briefing slot (`-- --dry` to preview it, `-- --show` for recent editions, `-- --force` to rebuild) |
+| `npm run sources:suggest` | Ask the deep model to propose new feed sources from the reader's profile and observed performance |
 | `npm run ingest` | Fetch feeds + hard filter. Free: no model calls |
 | `npm run process` | Embed → triage → cluster → extract → deep score → route |
 | `npm run publish` | Route already-scored items and resolve alternate formats |
@@ -378,7 +377,7 @@ feedback and publication remain deployment concerns per profile.
 | `npm run feedback` | Poll the Reeder feedback feeds |
 | `npm run learn` | Apply one slow learning round (`-- --dry` to preview) |
 | `npm run audit` | False-negative audit (`-- --run 20` to sample more) |
-| `npm run push` | Render feeds and upload them to Cloudflare KV (`-- --dry` to preview; `-- --feed classics` to scope the upload) |
+| `npm run push` | Render feeds and upload them to Cloudflare KV (`-- --dry` to preview; `-- --feed essential` to scope the upload) |
 | `npm run pull` | Copy open events recorded at the edge into the local database |
 | `npm run cycle` | `pipeline && push && pull` — what a scheduled job runs |
 | `npm run funnel` | Stage-by-stage survival rates, cost per outcome, false-negative audit |
@@ -402,7 +401,6 @@ npm run pipeline -- --skip-publish              # score but do not publish
 npm run inspect -- --status rejected_cheap      # what the cheap stage dropped
 npm run inspect -- --feed essential             # what is in a feed, and why
 npm run inspect -- --item <item-id>             # everything about one item
-npm run briefing -- --dry                       # what the due briefing would contain
 npm run stats -- --days 30
 ```
 
@@ -564,8 +562,6 @@ stay comparable across changes.
 | `feed-config.yaml` | 6,7 | the six feeds, each with its own goal |
 | `pipeline.yaml` | — | mechanics: fetching, extraction, clustering, learning |
 | `budget.yaml` | 5 | monthly spend limits, operating mode, audit rates, Terra allocation |
-| `classics.yaml` | archive | historical discovery pools, archival quality bar, diversity and one-per-day publishing |
-| `briefing.yaml` | 7 | the twice-daily digest: times, window, relevance weights, how many lines |
 
 ### The source model
 
@@ -594,106 +590,6 @@ source config enables both `require_explicit_free_article` and
 requires schema.org `isAccessibleForFree: true`, and then requires a full body
 from Readability. A paid declaration, missing declaration, teaser, RSS fallback,
 or short extraction becomes `rejected_access`; none reaches Terra or a feed.
-
-### Sift Classics
-
-Classics is a parallel archival lane rather than another daily-feed score. It
-discovers historical candidates from year-bounded Hacker News search and the
-public Longreads editorial archive, with an explicit seed hook for awards,
-author recommendations and targeted research. Popularity is only a discovery
-prior. Candidates are deduplicated against every previously published/opened
-Sift URL, fetched without authentication, required to yield a full English
-Readability body, and rejected on explicit paid/subscriber metadata or text.
-
-Only a small, source/era-diversified subset reaches `gpt-5.6-terra` under the
-versioned Classics prompt. Its deterministic score strongly weights analysis,
-storytelling, voice, entertainment, obsessive expertise, rabbit-hole potential
-and enduring value; topic fit and historical popularity are deliberately small.
-The model separately predicts whether the reader will start an article and whether the
-read will produce a 9/10-or-better payoff, so worthy homework and clickable
-disappointments cannot hide behind one blended score. At most one
-item is published per day to `/feed/classics.xml` (also `.rss` and `.json`). The
-feed timestamp is Sift's recommendation time; the original date is displayed in
-the item and retained separately in JSON Feed metadata.
-
-### The Briefing
-
-The briefing answers a different question from every other feed. The feeds ask
-"what is worth reading?"; the briefing asks "what would I regret not knowing?"
-So it arrives twice a day, at 08:00 and 20:00 local time, as **one article
-containing ten numbered lines** — a headline, a link and a short summary each —
-rather than as ten items to triage.
-
-```text
-Morning briefing · Sun 23 August
-
-1. A new proof settles a 40-year-old question about prime gaps
-   Quanta Magazine
-   Two mathematicians found the missing bound by reframing the problem
-   as a graph colouring.
-
-2. The last independent typewriter repair shop in Manhattan closes
-   kottke.org
-   After 61 years, the owner is retiring and taking the tooling with him.
-```
-
-It is a *view over* evaluations the funnel has already paid for, and three
-consequences of that were design decisions rather than accidents:
-
-- **It costs nothing.** No model is called. An item is a candidate only because
-  Terra already read it for the ordinary feeds.
-- **It cannot compete for Terra's money.** `terraOpportunity.ts` computes
-  `feed_need` from the six configured feeds and deliberately does not know the
-  briefing exists, so a digest line can never bid an article away from a feed
-  that will actually be read.
-- **It does not consume articles.** Editions live in their own tables, so
-  appearing in a briefing leaves an article fully eligible for Essential. The
-  overlap is the point.
-
-Being a digest changes what to optimise for, in two places worth knowing:
-
-`headline_sufficiency` is weighted **-0.20**, against -1.10 in Essential and
--1.30 in AI × Product. Those feeds penalise "the headline is the whole article"
-heavily because they are asking you to open and read the thing; a briefing is
-not. Set to -1.10 here and a run dropped every funding round, launch and
-shutdown — the news — keeping only essays *about* news.
-
-`max_per_cluster: 1` means one line per story, however many outlets covered it.
-Ten takes on one announcement is the failure a digest is most prone to, and
-clustering already decides what "the same story" means.
-
-Two rules keep the ritual honest rather than merely punctual. A slot more than
-`max_lateness_minutes` (6h) late is **skipped**, because an evening briefing
-delivered at 05:00 is not late news — it is a duplicate of the morning one about
-to arrive. And a slot that yields fewer than `min_items` (4) is **left unbuilt**,
-returning those items to the next window rather than spending them on a two-line
-"top ten".
-
-`npm run briefing -- --dry` shows what the due slot would publish, with each
-line's score and where its summary came from, without writing anything.
-
-### Two feeds you can decline
-
-Classics and the Briefing are the only optional parts of Sift. Onboarding
-explains both in plain language and offers a checkbox for each, ticked:
-
-```text
-The Briefing — twice a day
-Sift Classics — at most one a day
-```
-
-Both are additive rather than corrective: switching one off removes a feed and
-changes nothing about how the other six rank, which is why they are safe to
-default on and safe to change later. The choice is stored in
-`reader_preferences.optional_feeds`, and `loadConfig` resolves it into
-`config.briefing.enabled` / `config.classics.enabled` once — so the pipeline, the
-feed server, `push`, `doctor` and the dashboard all agree, and a declined feed is
-not merely empty but absent from the subscription list and 404 at its URL.
-
-Declining Classics also stops its spending. That flag used to be honoured only
-inside archival *discovery*, so a reader who turned it off still had their
-existing candidate pool evaluated and still received a Classic a day from it;
-`runClassics` now exits at the top.
 
 ### Stage 3: the free score
 
@@ -863,8 +759,6 @@ Preview before applying: `npm run learn -- --dry`.
   automatically — the point is measurement, not rescue. `npm run funnel` shows both,
   and names the exact knob to loosen if a rate is high.
 - current estimated API spend (today / 30 days / all time, by stage and model)
-- recent briefing editions, and how late each was built — consistently high
-  lateness means the Mac is asleep at 08:00 and slots are being skipped
 
 `/admin/item/<id>` shows one item end to end: cheap scores, deep scores, every
 routing decision with its reason, cluster siblings, alternate formats, extracted
@@ -971,6 +865,24 @@ wakes.
 ### 1. Deploy the Worker
 
 ```bash
+npm run cloud:setup -- --profile alice
+```
+
+One guided command instead of six manual ones. It creates the KV namespace and
+D1 database, applies the schema, sends the reader's access token to Cloudflare
+directly (never typed, never in a shell command), deploys the Worker, and
+writes the resulting namespace id and public URL into that reader's `.env`
+itself — no copying ids out of terminal output by hand. It opens your browser
+once, for `wrangler login`, if you are not already authenticated. Safe to run
+again later: anything already provisioned is detected and skipped rather than
+recreated. Same thing from the dashboard: **Publish and subscribe → Later:
+keep your feeds working while this Mac sleeps** has the same command ready to
+copy.
+
+<details>
+<summary>What that command does, if you would rather run it by hand</summary>
+
+```bash
 cd worker
 npx wrangler kv namespace create SIFT_FEEDS
 npx wrangler d1 create sift-events
@@ -984,6 +896,8 @@ npx wrangler types
 npx wrangler secret put SIFT_ACCESS_TOKEN     # the same token as your .env
 npx wrangler deploy
 ```
+
+</details>
 
 ### 2. Point the pipeline at it
 
@@ -1009,7 +923,7 @@ at. Set it before pushing, or the links will point at localhost.
 ```bash
 npm run push -- --dry     # render locally, upload nothing, check the sizes
 npm run push              # upload to KV
-npm run push -- --feed classics  # upload only Classics + its item redirects
+npm run push -- --feed essential  # upload only one feed + its item redirects
 ```
 
 Feeds are then live at `https://sift.<subdomain>.workers.dev/feed/<slug>.xml?t=TOKEN`.
@@ -1149,8 +1063,6 @@ src/
   embed/         embedding storage, cosine, anchor matching
   ai/            client, prompts, JSON repair, cheap triage, deep eval, batch
   cluster/       story clustering and deduplication
-  classics/      the optional archival lane: discovery, evaluation, publishing
-  briefing/      the optional twice-daily digest: schedule, selection, editions
   extract/       Readability extraction and robots.txt
   alternate/     podcast / audio / video matching
   rank/          stage 3 free scoring, source statistics, attention,

@@ -38,8 +38,6 @@ npm run service:install # run it in the background via launchd (--dry to preview
 npm run dev             # same, reloading on change
 npm run onboard         # print/import the personal-assistant onboarding dossier
 npm run calibrate       # optional feedback on real ranked recommendations
-npm run classics        # archival discovery; at most one recommendation/day
-npm run briefing        # the twice-daily digest; --dry to preview the due slot
 npm test                # vitest, no network or API calls
 npm run typecheck       # strict tsc, no emit
 ```
@@ -72,11 +70,10 @@ npm run pipeline -- --sources quanta,kottke
 | `npm run cluster:eval` | Same-story precision/recall vs the labelled fixture (`-- --sweep`) |
 | `npm run replay` | Replays the stored corpus at different budgets; makes no model calls |
 | `npm run inspect` | Per-item trace: why it surfaced, or why it disappeared |
-| `npm run briefing -- --dry` | What the due briefing slot would publish, and why each line |
 
 ## Architecture
 
-A seven-stage funnel. The governing principle is **spend progressively more
+A six-stage funnel. The governing principle is **spend progressively more
 computation only as an item earns the right to more attention**.
 
 ```
@@ -86,23 +83,13 @@ computation only as an item earns the right to more attention**.
 4 Luna             src/ai          gpt-5.6-luna triage, cheap
 5 Terra            src/ai          gpt-5.6-terra deep evaluation, expensive
 6 Final ranking    src/rank        deterministic portfolio construction
-7 Briefing         src/briefing    twice-daily digest over stage 6's pool     [$0]
-8 Feeds            src/server      Atom/RSS for Reeder
+7 Feeds            src/server      Atom/RSS for Reeder
 ```
 
-Two lanes sit beside the funnel rather than inside it, and both are **optional
-per reader**, chosen in onboarding and on by default:
-
-- **Classics** (`src/classics/`) — archival discovery, at most one a day. Its own
-  discovery, prompt and ranking; it does spend money.
-- **Briefing** (`src/briefing/`) — one article at 08:00 and 20:00 listing the top
-  ten, each a headline, a link and a short summary. Spends nothing.
-
-`reader_preferences.optional_feeds` gates both, and `loadConfig` resolves that
-into `config.classics.enabled` / `config.briefing.enabled` once, so no lane has
-to consult the reader's preferences itself. Use `allFeeds(config)` to enumerate
-subscribable feeds — never `[...config.feeds, config.classics.feed]`, which is
-how a new feed ends up served but not pushed.
+Use `allFeeds(config)` to enumerate subscribable feeds rather than reading
+`config.feeds` directly at each call site — the feed server, `push`, the
+static export, and `doctor` all need the same list, and history here is that a
+feed added in only one of those places gets served but not pushed.
 
 `src/pipeline/run.ts` is the spine — stages are numbered in comments there and
 that is the fastest way to orient. Supporting concerns: `src/pipeline/budget.ts`
@@ -243,20 +230,6 @@ the distribution; verify that previously-published items still land in band A/B.
   serving feed XML from KV and recording opens to D1.
 - **Audit samples must never auto-publish.** They record whether they *would
   have*. That distinction is what makes the false-negative rate meaningful.
-  This includes the briefing: appearing on line seven is being read.
-- **The briefing must never write `published_feed_items`.** `publishEditions`
-  and `publishClassics` both skip anything already in that table, so a briefing
-  line recorded there would permanently disqualify the article from Essential —
-  the digest would silently consume the feeds it summarises. Editions live in
-  `briefing_editions` / `briefing_edition_items` for exactly this reason, and
-  overlap between the briefing and the feeds is intended.
-- **`terraOpportunity` does not know the briefing exists**, deliberately. The
-  briefing selects from evaluations already paid for, so giving it `feed_need`
-  would let a digest line bid an article away from a feed that will actually be
-  read. Do not add it there.
-- **Briefing days are local, feed days are UTC.** `dayKey()` is UTC and drives
-  daily caps; `briefing_editions.local_day` is the reader's calendar day,
-  because "the 8am one" has to mean their 8am. Keep them apart.
 
 ## Testing conventions
 
@@ -295,8 +268,7 @@ is enough context for most work.
 | a prompt | `prompts/` — **add a new version file**, point `final-ranking.yaml` at it | `npm run replay` |
 | ranking / diversification | `src/rank/portfolio.ts`, `publishEdition.ts` | `npm run replay` |
 | feed output | `src/server/renderFeed.ts`, `config/feed-config.yaml` | `npm run serve` |
-| the briefing | `src/briefing/`, `config/briefing.yaml` | `npm run briefing -- --dry` |
-| whether a reader gets an optional feed | `src/config/schema.ts` (`optional_feeds`), onboarding wizards in `src/ui/app.ts` **and** `src/cli/onboard.ts` | `npm test`, `npm run doctor` |
+| source discovery | `src/onboarding/suggestSources.ts`, `prompts/feed-source-discovery-v2.md` | `npm run sources:suggest` |
 | spend or degradation | `src/pipeline/budget.ts`, `config/budget.yaml` | `npm run budget` |
 | a config value | the YAML **and** `src/config/schema.ts`, with a comment recording *why* | `npm run typecheck` |
 | the schema | `src/db/schema.sql` **and** an `ensureColumn` in `src/db/index.ts` | `npm test` |

@@ -37,7 +37,6 @@ function safeArray(json: string | null): string[] {
 }
 
 function loadCandidates(db: Db, config: AppConfig): Candidate[] {
-  const feedSourceIds = config.sources.filter((source) => source.lanes.includes('feeds')).map((source) => source.id);
   const rows = db.all<{
     id: string;
     source_id: string;
@@ -80,13 +79,8 @@ function loadCandidates(db: Db, config: AppConfig): Candidate[] {
      WHERE s.publishable = 1
        -- Audit samples are measured, never auto-published: that is the point.
        AND de.is_audit_sample = 0
-       -- A source opts into the feeds lane. One that serves only the briefing
-       -- is still ingested, evaluated and clustered — so it keeps informing
-       -- saturation and duplicate detection here — but cannot itself surface.
-       AND s.id IN (${feedSourceIds.map((_, i) => `:src${i}`).join(',') || `''`})
        AND NOT EXISTS (SELECT 1 FROM published_feed_items p WHERE p.item_id = fi.id)
      ORDER BY de.expected_attention_value DESC`,
-    Object.fromEntries(feedSourceIds.map((id, i) => [`src${i}`, id])),
   );
 
   const sourceMap = new Map(config.sources.map((s) => [s.id, s]));

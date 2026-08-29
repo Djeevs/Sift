@@ -12,8 +12,6 @@ import {
   budgetFileSchema,
   sourcesOverlayFileSchema,
   type SourcesFile,
-  classicsFileSchema,
-  briefingFileSchema,
   type BudgetFile,
   type ModeConfig,
   sourcesFileSchema,
@@ -25,8 +23,6 @@ import {
   type PipelineConfig,
   type SourceConfig,
   type TasteProfile,
-  type ClassicsConfig,
-  type BriefingConfig,
 } from './schema.js';
 
 export * from './schema.js';
@@ -217,8 +213,6 @@ export interface AppConfig {
   feeds: FeedConfig[];
   categories: string[];
   pipeline: PipelineConfig;
-  classics: ClassicsConfig;
-  briefing: BriefingConfig;
   /** Spend limits, audit rates and Terra-allocation settings for the active mode. */
   budget: BudgetFile['budget'];
   terraOpportunity: BudgetFile['terra_opportunity'];
@@ -238,12 +232,10 @@ export interface AppConfig {
     feeds: string;
     pipeline: string;
     budget: string;
-    classics: string;
-    briefing: string;
     /** Combined ranking identity: what a stored decision was made under. */
     ranking: string;
   };
-  paths: Record<'sources' | 'taste' | 'models' | 'free' | 'final' | 'feeds' | 'pipeline' | 'budget' | 'classics' | 'briefing' | 'prompts', string>;
+  paths: Record<'sources' | 'taste' | 'models' | 'free' | 'final' | 'feeds' | 'pipeline' | 'budget' | 'prompts', string>;
 }
 
 function readYaml(path: string, name: string): { data: unknown; hash: string } {
@@ -298,8 +290,6 @@ export function loadConfig(options: { configDir?: string; reload?: boolean } = {
     feeds: file('feed-config.yaml'),
     pipeline: file('pipeline.yaml'),
     budget: file('budget.yaml'),
-    classics: file('classics.yaml'),
-    briefing: file('briefing.yaml'),
     // Additive, and only ever inside a profile: sources the reader adopted from
     // assistant suggestions. Absent for the shared checkout.
     sourcesOverlay: resolve(configDir, 'sources.added.yaml'),
@@ -315,8 +305,6 @@ export function loadConfig(options: { configDir?: string; reload?: boolean } = {
     feeds: readYaml(paths.feeds, 'feed-config.yaml'),
     pipeline: readYaml(paths.pipeline, 'pipeline.yaml'),
     budget: readYaml(paths.budget, 'budget.yaml'),
-    classics: readYaml(paths.classics, 'classics.yaml'),
-    briefing: readYaml(paths.briefing, 'briefing.yaml'),
   };
 
   const sourcesFile = parseOrThrow('sources.yaml', sourcesFileSchema, raw.sources.data);
@@ -334,8 +322,6 @@ export function loadConfig(options: { configDir?: string; reload?: boolean } = {
   const feedFile = parseOrThrow('feed-config.yaml', feedFileSchema, raw.feeds.data);
   const pipeline = parseOrThrow('pipeline.yaml', pipelineFileSchema, raw.pipeline.data);
   const budgetFile = parseOrThrow('budget.yaml', budgetFileSchema, raw.budget.data);
-  const classics = parseOrThrow('classics.yaml', classicsFileSchema, raw.classics.data);
-  const briefing = parseOrThrow('briefing.yaml', briefingFileSchema, raw.briefing.data);
 
   // The active mode may be overridden per-process, so a calibration run does not
   // require editing config.
@@ -403,7 +389,6 @@ export function loadConfig(options: { configDir?: string; reload?: boolean } = {
         ((s.enabled ?? defaults.enabled) &&
           (access === 'free' || explicitlyGatedMixedSource) &&
           feedType !== 'podcast'),
-      lanes: s.lanes ?? defaults.lanes,
       quality_prior: qualityPrior,
       volume_budget: s.volume_budget ?? defaults.volume_budget,
       exploration_floor: s.exploration_floor ?? defaults.exploration_floor,
@@ -425,14 +410,6 @@ export function loadConfig(options: { configDir?: string; reload?: boolean } = {
   final.final_ranking.exploration.fraction = Math.min(0.4, serendipity * 0.04);
   final.final_ranking.exploration.min_slots_per_day = serendipity === 0 ? 0 : serendipity >= 8 ? 2 : 1;
   final.final_ranking.exploration.min_serendipity = Math.max(0.35, Math.min(0.75, 0.75 - serendipity * 0.04));
-
-  // The two optional lanes: a reader who declined one in onboarding must not get
-  // it, whatever its own YAML says. Resolved here, once, so no lane has to
-  // remember to consult the reader's preferences -- and so `enabled` means the
-  // same thing to the pipeline, the feed server, the dashboard and `push`.
-  const optional = taste.reader_preferences.optional_feeds;
-  classics.enabled = classics.enabled && optional.classics;
-  briefing.enabled = briefing.enabled && optional.briefing;
 
   // --- Cross-file validation. Catching these at load beats a silent zero later.
   const categories = feedFile.categories;
@@ -469,7 +446,7 @@ export function loadConfig(options: { configDir?: string; reload?: boolean } = {
   // so a duplicate is not a cosmetic clash: the second definition becomes
   // unreachable and its subscribers silently receive the first one's items.
   const claimed = new Map<string, string>();
-  for (const feed of [...feedFile.feeds, classics.feed, briefing.feed]) {
+  for (const feed of feedFile.feeds) {
     for (const key of new Set([feed.id, feed.slug])) {
       const owner = claimed.get(key);
       if (owner && owner !== feed.id) {
@@ -488,11 +465,9 @@ export function loadConfig(options: { configDir?: string; reload?: boolean } = {
     feeds: raw.feeds.hash,
     pipeline: raw.pipeline.hash,
     budget: raw.budget.hash,
-    classics: raw.classics.hash,
-    briefing: raw.briefing.hash,
     // Everything that can change a ranking outcome, in one identifier.
     ranking: contentHash(
-      [raw.taste.hash, raw.free.hash, raw.final.hash, raw.feeds.hash, raw.sources.hash, raw.classics.hash].join('|'),
+      [raw.taste.hash, raw.free.hash, raw.final.hash, raw.feeds.hash, raw.sources.hash].join('|'),
     ),
   };
 
@@ -509,8 +484,6 @@ export function loadConfig(options: { configDir?: string; reload?: boolean } = {
     feeds: feedFile.feeds,
     categories,
     pipeline,
-    classics,
-    briefing,
     budget: budgetFile.budget,
     terraOpportunity: budgetFile.terra_opportunity,
     modeName,
@@ -558,31 +531,17 @@ export function feedWeight(source: SourceConfig | undefined, feedId: string): nu
 /**
  * Every feed a reader can subscribe to, in the order they should be listed.
  *
- * The always-on feeds first, then whichever optional lanes this reader kept.
- * Callers used to spell out `[...config.feeds, config.classics.feed]` in six
- * places -- the feed server, `push`, the static export, `doctor`, the dashboard
- * -- which is exactly six chances for a newly added feed to be served but not
- * pushed, or listed but not resolvable. Adding the briefing made that concrete,
- * so the list has one home.
+ * Kept as its own function rather than callers spelling out `config.feeds`
+ * directly: the feed server, `push`, the static export, and `doctor` all need
+ * the same list, and history here is that a feed added in only one of those
+ * places gets served but not pushed, or listed but not resolvable.
  */
 export function allFeeds(config: AppConfig): FeedConfig[] {
-  return [
-    ...config.feeds,
-    ...(config.classics.enabled ? [config.classics.feed] : []),
-    ...(config.briefing.enabled ? [config.briefing.feed] : []),
-  ];
+  return config.feeds;
 }
 
-/**
- * How many entries a feed should render.
- *
- * Each optional lane publishes on its own cadence, so it needs its own length:
- * 60 briefing editions is a month of history, while 60 of the daily feed's
- * items is a few days.
- */
-export function feedLength(config: AppConfig, feed: FeedConfig): number {
-  if (feed.id === config.classics.feed.id) return config.classics.publishing.feed_length;
-  if (feed.id === config.briefing.feed.id) return config.briefing.feed_length;
+/** How many entries a feed should render. */
+export function feedLength(config: AppConfig, _feed: FeedConfig): number {
   return config.final.final_ranking.feed_length;
 }
 

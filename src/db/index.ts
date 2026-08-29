@@ -211,11 +211,6 @@ export function migrate(db: Db): void {
   ensureColumn(db, 'audit_samples', 'is_serendipity', 'INTEGER');
   ensureColumn(db, 'audit_samples', 'content_type', 'TEXT');
   ensureColumn(db, 'sources', 'first_seen_at', 'INTEGER');
-  // Classics v2 separates whether the reader will actually start an article from
-  // how glad he is expected to be after reading it. Existing rows are
-  // re-evaluated by prompt-version mismatch rather than guessed in migration.
-  ensureColumn(db, 'classics_evaluations', 'predicted_read', 'REAL NOT NULL DEFAULT 0');
-  ensureColumn(db, 'classics_evaluations', 'predicted_payoff', 'REAL NOT NULL DEFAULT 0');
 
   db.run(
     `INSERT INTO schema_meta(key, value) VALUES('version', '3')

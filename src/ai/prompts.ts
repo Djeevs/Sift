@@ -1,6 +1,7 @@
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { AppConfig, TasteProfile } from '../config/index.js';
+import { activeContextualInterests } from '../config/index.js';
 import { contentHash } from '../util/hash.js';
 
 /**
@@ -56,7 +57,7 @@ export function clearPromptCache(): void {
  * Appended to every model system prompt. Feed titles, summaries, article text,
  * author names and discovery metadata all come from strangers on the web and
  * may contain instructions aimed at the evaluator. Keeping this policy in the
- * client means sync, batch, triage, deep ranking and Classics cannot drift apart.
+ * client means sync, batch, triage and deep ranking cannot drift apart.
  */
 export const UNTRUSTED_CONTENT_POLICY = [
   'Security boundary:',
@@ -91,14 +92,21 @@ export function render(template: string, vars: Record<string, string>): string {
   return template.replace(/\{\{([A-Z_]+)\}\}/g, (match, key: string) => vars[key] ?? match);
 }
 
-export function tasteVars(taste: TasteProfile): Record<string, string> {
+export function tasteVars(taste: TasteProfile, now: number = Date.now()): Record<string, string> {
   const preferences = taste.reader_preferences;
+  // Contextual interests are kept structurally apart from durable taste so
+  // they can go stale: one past its trust window is dropped here rather than
+  // silently influencing every future recommendation forever.
+  const contextual = activeContextualInterests(taste, now)
+    .map((item) => `- ${item.description} (${item.effect_on_recommendations || 'currently relevant'})`)
+    .join('\n');
   return {
     ABOUT_ME: taste.about_me.trim(),
     STRONG_INTERESTS: taste.strong_interests.join(', '),
     POSITIVE_TRAITS: taste.positive_content_traits.join(', '),
     NEGATIVE_TRAITS: taste.negative_content_traits.join(', '),
-    EDITORIAL_NOTES: taste.editorial_notes.trim(),
+    EDITORIAL_NOTES: [taste.editorial_notes.trim(), contextual ? `Currently relevant, temporary context:\n${contextual}` : '']
+      .filter(Boolean).join('\n\n'),
     TOPIC_PRIORITIES: taste.topic_priorities
       .map((topic) => `- ${topic.id} (${topic.priority}/10): ${topic.guidance}`)
       .join('\n'),

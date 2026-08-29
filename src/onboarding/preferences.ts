@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import {
   articleLengthSchema,
-  optionalFeedsSchema,
   attentionBudgetSchema,
   freshnessBalanceSchema,
   paywallPolicySchema,
@@ -32,14 +31,6 @@ export const assistantPreferenceHintsSchema = z.object({
     strength: z.enum(['prefer', 'strongly_prefer']).default('prefer'),
     confidence,
   })).default([]),
-  /**
-   * The two optional feeds. Optional in the dossier as well as in Sift: an
-   * assistant that has never heard of them omits these and the reader gets the
-   * default (both on), which is what every dossier written before they existed
-   * does. Only a confident hint turns one off.
-   */
-  briefing: scalarHint(z.boolean()).nullable().default(null),
-  classics: scalarHint(z.boolean()).nullable().default(null),
 }).default({});
 
 export type AssistantPreferenceHints = z.output<typeof assistantPreferenceHintsSchema>;
@@ -91,10 +82,6 @@ export function suggestedReaderPreferences(hints: AssistantPreferenceHints): Rea
     medium_preferences: hints.medium_preferences
       .filter((preference) => preference.confidence >= 0.55)
       .map(({ confidence: _confidence, ...preference }) => preference),
-    optional_feeds: optionalFeedsSchema.parse({
-      briefing: use(hints.briefing, defaults.optional_feeds.briefing),
-      classics: use(hints.classics, defaults.optional_feeds.classics),
-    }),
   });
 }
 
@@ -122,10 +109,6 @@ export function preferenceSummary(preferences: ReaderPreferences): string[] {
   const medium = preferences.medium_preferences.length > 0
     ? preferences.medium_preferences.map((item) => `${item.subject} → ${item.preferred_medium}`).join('; ')
     : 'no subject-specific medium rules';
-  const optional = [
-    preferences.optional_feeds.briefing ? 'twice-daily briefing' : null,
-    preferences.optional_feeds.classics ? 'Sift Classics' : null,
-  ].filter(Boolean);
   return [
     `Attention: ${attention}`,
     `Length: ${preferences.article_length.replaceAll('_', ' ')}`,
@@ -136,6 +119,5 @@ export function preferenceSummary(preferences: ReaderPreferences): string[] {
     `Voices: ${preferences.writing_voices.join(', ') || 'no special preference'}`,
     `Disliked styles: ${preferences.disliked_styles.join(', ') || 'none supplied'}`,
     `Other media: ${medium}`,
-    `Optional feeds: ${optional.length > 0 ? optional.join(', ') : 'none — the six topic feeds only'}`,
   ];
 }

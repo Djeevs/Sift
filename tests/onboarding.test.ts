@@ -26,34 +26,51 @@ import {
 import { seedDeepEvaluation, seedItem, testDb } from './helpers.js';
 
 const dossier: OnboardingDossier = {
-  version: 3,
+  version: 5,
   reading_goal: 'Find a small number of things that consistently justify attention.',
   executive_taste_summary: 'An inquisitive general reader who values explanation more than comprehensive news coverage.',
   attention_selection_model: 'Execution can override topic fit, but routine relevance is not enough.',
-  values_and_outlook: [{ description: 'Values evidence and intellectual honesty.', basis: 'observed', confidence: 0.8 }],
-  current_context: [{ description: 'Learning about resilient institutions.', relevance_to_reading: 'Makes institutional case studies timely.', basis: 'explicit', confidence: 0.9 }],
-  interests: [{
+  contextual_interests: [{
+    id: 'resilient_institutions',
+    description: 'Learning about resilient institutions.',
+    effect_on_recommendations: 'Makes institutional case studies timely.',
+    strength: 'moderate',
+    time_horizon: 'months',
+    refresh_required: false,
+    basis: 'explicit',
+    confidence: 0.9,
+  }],
+  stable_interests: [{
     id: 'science_discoveries',
     label: 'science discoveries',
     tier: 'core',
     priority: 8,
     preferred_coverage: ['Accessible discoveries that change understanding rather than incremental paper summaries.'],
+    avoid_coverage: [],
     conditions: [],
+    saturation: { repeat_tolerance: 'low', new_angle_required: true, guidance: 'Only the best treatment of a repeated finding.' },
     medium_fit: 'cross_medium',
     basis: 'explicit',
     confidence: 0.9,
   }],
   valuable_intersections: [{ description: 'science and institutional incentives', why_it_matters: 'Mechanisms connect abstract findings to real systems.', basis: 'observed', confidence: 0.7 }],
-  rewarding_qualities: [{ quality: 'clear mechanisms', why: 'They make the causal insight reusable.', strength: 'strong', basis: 'observed', confidence: 0.8 }],
-  unrewarding_qualities: [{ quality: 'thin aggregation', why: 'It adds little beyond the headline.', strength: 'strong', basis: 'observed', confidence: 0.8 }],
-  content_mix: { breaking_news: 0.2, reporting: 0.7, analysis: 0.9, narrative: 0.7, criticism: 0.5, practical: 0.4, entertainment: 0.5, serendipity: 0.6 },
-  timeliness_profile: { news_vs_interpretation: 'Prefer explanation after the event unless immediacy changes action.', loses_value_quickly: ['routine announcements'], remains_valuable: ['conceptual explanations'], archival_appetite: 'high', age_guidance: 'Old work is welcome when still illuminating.', basis: 'observed', confidence: 0.7 },
+  taste_signals: [
+    { signal: 'clear mechanisms', effect: 'strong_positive', why: 'They make the causal insight reusable.', conditions: [], basis: 'observed', confidence: 0.8 },
+    { signal: 'thin aggregation', effect: 'strong_negative', why: 'It adds little beyond the headline.', conditions: [], basis: 'observed', confidence: 0.8 },
+  ],
+  semantic_anchors: [{ id: 'science', interest_id: 'science_discoveries', description: 'Major accessible science discoveries with a conceptual payoff.', priority: 8, basis: 'explicit', confidence: 0.85 }],
+  avoid_anchors: [{ id: 'thin', description: 'Thin aggregation and announcements replaceable by the headline.', strength: 'strong', basis: 'observed', confidence: 0.8 }],
   depth_length_profile: { summary: 'Depth matters more than length.', longform_payoff_threshold: 'Long pieces need a durable conceptual or narrative payoff.', technical_complexity: 'Welcome when clearly explained.', basis: 'observed', confidence: 0.8 },
-  medium_profile: [{ subject_or_style: 'craft analysis', fit: 'stronger_elsewhere', preferred_medium: 'video', transferable_qualities: ['clear demonstration'], basis: 'explicit', confidence: 0.8 }],
-  entertainment_profile: { role_in_ranking: 'Enjoyment can justify reading without professional utility.', rewarding_forms: ['dry humor'], basis: 'observed', confidence: 0.7 },
+  timeliness_profile: { summary: 'Prefer explanation after the event unless immediacy changes action.', loses_value_quickly: ['routine announcements'], remains_valuable: ['conceptual explanations'], basis: 'observed', confidence: 0.7 },
   exploration_profile: { frequency: 'occasional', execution_override_strength: 7, unfamiliar_topic_quality_bar: 'Require exceptional storytelling or explanation.', override_conditions: ['unusual expertise'], basis: 'observed', confidence: 0.8 },
+  exploration_frontiers: [],
+  medium_profile: [{ subject_or_style: 'craft analysis', fit: 'stronger_elsewhere', preferred_medium: 'video', transferable_qualities: ['clear demonstration'], basis: 'explicit', confidence: 0.8 }],
   professional_personal_boundary: { enjoyed_overlap: ['institutional incentives'], useful_but_not_personal: ['routine industry news'], guidance: 'Do not rank merely obligatory professional coverage.', basis: 'observed', confidence: 0.7 },
-  style_references: [{ name: 'Example Review', relationship: 'style_reference', qualities: 'Clear mechanisms and dry humor.', confidence: 0.7 }],
+  known_source_evidence: [{
+    name: 'Example Review', relationship: 'known_favorite',
+    scope: 'Their explanatory reviews specifically.',
+    reason: 'A repeatedly enjoyed explanatory publication.', basis: 'explicit', confidence: 0.9,
+  }],
   examples: [{ kind: 'explicit_positive', title_or_description: 'A careful investigation of a failed institution', reason: 'It explained incentives through a story.', confidence: 0.8 }],
   assistant_preference_hints: {
     attention_budget: { value: '15_30', confidence: 0.8 },
@@ -67,20 +84,6 @@ const dossier: OnboardingDossier = {
     disliked_styles: { value: ['breathless hype'], confidence: 0.8 },
     medium_preferences: [{ subject: 'craft analysis', preferred_medium: 'video', strength: 'prefer', confidence: 0.8 }],
   },
-  interest_anchors: [{ id: 'science', category: 'ideas_science', description: 'Major accessible science discoveries with a conceptual payoff.' }],
-  avoid_anchors: [{ id: 'thin', description: 'Thin aggregation and announcements replaceable by the headline.' }],
-  source_candidates: [{ name: 'Example Review', domain: 'example.com', disposition: 'known_favorite', role: 'direct_follow', content_areas: ['explanatory reporting'], caveats: [], reason: 'A repeatedly enjoyed explanatory publication.', basis: 'explicit', confidence: 0.9 }],
-  ranking_guidance: {
-    strong_positive_signals: ['clear causal explanation'],
-    moderate_positive_signals: ['distinctive voice'],
-    weak_positive_signals: [],
-    strong_negative_signals: ['thin aggregation'],
-    hard_filters: [],
-    override_rules: ['Exceptional execution can override weak topic fit.'],
-    interaction_effects: ['institutional incentives plus narrative investigation'],
-    source_level_guidance: ['A favorite source is a prior, not a guarantee.'],
-    duplication_and_saturation: ['Prefer the best treatment of a repeated story.'],
-  },
   contradictions: [{ tension: 'Values depth but not unnecessary length.', conditions: 'Length works when it produces durable payoff.', confidence: 0.8 }],
   uncertainties: ['Tolerance for very long articles'],
   privacy_redactions: ['Exact employer omitted'],
@@ -92,7 +95,7 @@ describe('reader onboarding', () => {
   // of onboarding into a JSON parser error message.
   it('finds the dossier inside a conversational reply', () => {
     const reply = `Sure! Here is your reading profile:\n\n${JSON.stringify(dossier)}\n\nLet me know if you want me to adjust anything — happy to help!`;
-    expect(parseDossier(reply).version).toBe(3);
+    expect(parseDossier(reply).version).toBe(5);
   });
 
   it('is not fooled by a brace inside a quoted value', () => {
@@ -120,8 +123,8 @@ describe('reader onboarding', () => {
         { kind: 'explicit_positive', title_or_description: 'Piran', reason: 'Liked.', confidence: 0.8 },
         { kind: 'explicit_negative', title_or_description: 'Meh12', reason: 'Dull.', confidence: 0.8 },
       ],
-      style_references: [
-        { name: 'A', relationship: 'medium_reference', qualities: 'Funny', confidence: 0.9 },
+      known_source_evidence: [
+        { name: 'A', relationship: 'style_reference', scope: 'Funny', reason: 'Consistently funny.', basis: 'observed', confidence: 0.6 },
       ],
     };
     const parsed = parseDossier(JSON.stringify(minimal));
@@ -145,8 +148,7 @@ describe('reader onboarding', () => {
     const taste = compileTasteProfile(parsed);
     expect(taste.strong_interests).toEqual(['science discoveries']);
     expect(taste.topic_priorities[0]).not.toHaveProperty('confidence');
-    expect(taste.editorial_notes).toContain('analysis 90%');
-    expect(taste.editorial_notes).toContain('best treatment of a repeated story');
+    expect(taste.topic_priorities[0]!.guidance).toContain('Only the best treatment of a repeated finding');
     expect(taste.editorial_notes).toContain('Tolerance for very long articles');
     expect(taste.positive_examples[0]?.description).toContain('failed institution');
     expect(taste.reader_preferences.serendipity).toBe(7);
@@ -155,9 +157,9 @@ describe('reader onboarding', () => {
 
   it('keeps the JSON example in the user-facing prompt aligned with the parser', () => {
     const prompt = readFileSync(resolve(PROJECT_ROOT, 'onboarding/chatgpt-profile-prompt.md'), 'utf8');
-    const example = /\n(\{\n  "version": 3[\s\S]*?\n\})\n\nAllowed values:/.exec(prompt)?.[1];
+    const example = /\n(\{\n  "version": 5[\s\S]*?\n\})\n\nAllowed values:/.exec(prompt)?.[1];
     expect(example).toBeTruthy();
-    expect(parseDossier(example!).version).toBe(3);
+    expect(parseDossier(example!).version).toBe(5);
   });
 
   it('rejects obsolete dossier contracts instead of assigning ambiguous meanings', () => {
@@ -185,7 +187,9 @@ describe('reader onboarding', () => {
     expect(env).toContain('SIFT_KV_NAMESPACE_ID=\n');
     expect(env).not.toContain('bob-token');
     expect(readFileSync(resolve(first.directory, 'reader-preferences.json'), 'utf8')).toContain('attention_budget');
-    expect(readFileSync(resolve(first.directory, 'source-candidates.json'), 'utf8')).toContain('Example Review');
+    // Source discovery is Sift's job now, not the dossier's -- the file
+    // starts empty and only `npm run sources:suggest` populates it.
+    expect(readFileSync(resolve(first.directory, 'source-candidates.json'), 'utf8')).toContain('"candidates": []');
   });
 
   it('calibrates only against real ranked articles and records concrete feedback', () => {
@@ -230,13 +234,10 @@ describe('reader onboarding', () => {
     const projectRoot = mkdtempSync(resolve(tmpdir(), 'sift-source-prior-'));
     const withQuanta: OnboardingDossier = {
       ...dossier,
-      source_candidates: [{
+      known_source_evidence: [{
         name: 'Quanta Magazine',
-        domain: 'quantamagazine.org',
-        disposition: 'known_favorite',
-        role: 'direct_follow',
-        content_areas: ['conceptual science'],
-        caveats: [],
+        relationship: 'known_favorite',
+        scope: 'Their conceptual science explanations.',
         reason: 'Repeatedly enjoyed for conceptual science explanations.',
         basis: 'explicit',
         confidence: 1,
@@ -256,13 +257,13 @@ describe('reader onboarding', () => {
     const projectRoot = mkdtempSync(resolve(tmpdir(), 'sift-discovery-prior-'));
     const discoveryOnly: OnboardingDossier = {
       ...dossier,
-      source_candidates: [{
+      // "noisy but useful" maps to the same near-zero role multiplier
+      // `discovery_only` used to give directly -- candidate generation, not
+      // a blanket endorsement.
+      known_source_evidence: [{
         name: 'Quanta Magazine',
-        domain: 'quantamagazine.org',
-        disposition: 'recommended',
-        role: 'discovery_only',
-        content_areas: ['conceptual science'],
-        caveats: ['Treat as candidate generation rather than a blanket endorsement.'],
+        relationship: 'noisy_but_useful',
+        scope: 'Occasional conceptual science pieces.',
         reason: 'Useful for discovering occasional conceptual science pieces.',
         basis: 'inferred',
         confidence: 1,

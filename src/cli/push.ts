@@ -13,7 +13,7 @@ import { DAY_MS } from '../util/time.js';
  *
  *   npm run push
  *   npm run push -- --dry     render and report sizes, upload nothing
- *   npm run push -- --feed classics
+ *   npm run push -- --feed essential
  *
  * Safe to run as often as you like: it overwrites the same keys.
  */

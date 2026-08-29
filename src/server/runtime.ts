@@ -24,11 +24,10 @@ import { createApp } from './app.js';
 import { createUiApp } from '../ui/app.js';
 import { UiJobRunner } from '../ui/jobs.js';
 import { runPipeline } from '../pipeline/run.js';
-import { runBriefing } from '../briefing/index.js';
 import { pollFeedbackFeeds, resolveFeedbackFeeds } from '../feedback/reeder.js';
 import { applyLearning } from '../learn/index.js';
 import { startJob } from '../pipeline/journal.js';
-import { LockedError, withLock } from '../util/lock.js';
+import { LockedError } from '../util/lock.js';
 import { allFeeds, resolveHome } from '../config/index.js';
 import { logger } from '../util/log.js';
 import type { Db } from '../db/index.js';
@@ -182,30 +181,6 @@ export function startRuntime(options: RuntimeOptions): Runtime {
       }
     };
 
-    /**
-     * The briefing is checked on its own short interval, not folded into the
-     * pipeline tick.
-     *
-     * The pipeline runs every 90 minutes, so leaving the briefing to it would
-     * deliver the 08:00 edition at an arbitrary point before 09:30. A briefing
-     * is a time-of-day ritual; being an hour late is most of the way to being
-     * useless. When nothing is due this is one indexed COUNT(*).
-     *
-     * It takes the same database lock as the pipeline, so a check that lands
-     * mid-run is skipped and retried on the next tick rather than writing
-     * underneath it.
-     */
-    const runBriefingOnce = async (): Promise<void> => {
-      if (!config.briefing.enabled) return;
-      try {
-        const result = await withLock(config.env.dbPath, 'briefing', async () => runBriefing(db, config));
-        if (result.built) log.info(result.reason);
-      } catch (err) {
-        if (err instanceof LockedError) log.debug(`briefing check skipped: ${err.message}`);
-        else log.error('briefing check failed', err);
-      }
-    };
-
     const pipelineMs = config.pipeline.ingest.poll_interval_minutes * 60_000;
     log.info(`scheduler on: a run every ${config.pipeline.ingest.poll_interval_minutes} minutes`);
     // Staggered so the servers answer requests before the first run starts.
@@ -213,11 +188,6 @@ export function startRuntime(options: RuntimeOptions): Runtime {
     timers.push(setInterval(() => void runPipelineOnce(), pipelineMs));
     timers.push(setInterval(() => void runFeedbackOnce(), config.pipeline.feedback.poll_interval_minutes * 60_000));
     timers.push(setInterval(() => runLearnOnce(), 24 * 3_600_000));
-    if (config.briefing.enabled) {
-      const briefingMs = config.briefing.schedule.check_interval_minutes * 60_000;
-      log.info(`briefing on: ${config.briefing.schedule.times.join(' and ')} (${config.briefing.schedule.timezone})`);
-      timers.push(setInterval(() => void runBriefingOnce(), briefingMs));
-    }
   } else if (options.schedule) {
     log.warn('scheduler requested but no reader is configured yet');
   }

@@ -1,5 +1,5 @@
 import { main, printTable } from './_bootstrap.js';
-import { allFeeds } from '../config/index.js';
+import { allFeeds, contextualInterestExpired } from '../config/index.js';
 import { onboardingReminder } from '../onboarding/index.js';
 
 interface OllamaTags {
@@ -76,6 +76,11 @@ await main(async ({ db, config }) => {
   console.log('');
   console.log(`database: ${config.env.dbPath} (${counts?.items ?? 0} items, ${counts?.published ?? 0} placements)`);
   console.log(`taste profile: ${config.taste.strong_interests.length} strong interests, ${config.taste.topic_priorities.length} topic priorities`);
+  const staleContext = config.taste.contextual_interests.filter((item) => contextualInterestExpired(item));
+  if (staleContext.length > 0) {
+    console.log(`contextual interests past their trust window (no longer influencing recommendations): ${staleContext.map((item) => item.id).join(', ')}`);
+    console.log('  Re-run onboarding or update taste-profile.yaml to refresh or remove them.');
+  }
   console.log(`sources: ${config.sources.filter((source) => source.enabled).length} enabled`);
   console.log(`model mode: ${config.env.dryRun ? 'dry run' : rows.every((row) => row.credential !== 'MISSING') ? 'ready' : 'incomplete'}`);
 
@@ -86,13 +91,6 @@ await main(async ({ db, config }) => {
   if (!config.env.accessToken || config.env.accessToken === 'change-me-please') {
     console.log('warning: feeds are not access-token protected (fine for localhost; unsafe on a public server)');
   }
-  console.log('');
-  console.log('Optional feeds:');
-  console.log(`  briefing: ${config.briefing.enabled
-    ? `on, ${config.briefing.schedule.times.join(' and ')} (${config.briefing.schedule.timezone}), top ${config.briefing.selection.items}`
-    : 'off for this reader'}`);
-  console.log(`  classics: ${config.classics.enabled ? 'on, at most one a day' : 'off for this reader'}`);
-
   console.log('');
   console.log('Reeder subscription URLs:');
   for (const feed of allFeeds(config)) {

@@ -43,14 +43,10 @@ await main(async ({ db }, args) => {
 
   for (const proposal of result.proposals) {
     console.log(`  ${proposal.name}  (${proposal.domain})  [${proposal.sourceType}]`);
-    console.log(`    ${proposal.disposition.replaceAll('_', ' ')} · confidence ${proposal.confidence.toFixed(2)} · basis: ${proposal.basis.join(', ') || 'unstated'}`);
-    // Per lane, because that is the judgement v2 actually makes.
-    for (const lane of proposal.lanes) {
-      console.log(`    ${lane.lane.padEnd(9)} fit ${lane.fit.toFixed(2)} · ${lane.role.replaceAll('_', ' ')}`);
-      console.log(`      ${lane.reason}`);
-    }
+    console.log(`    ${proposal.disposition.replaceAll('_', ' ')} · ${proposal.role.replaceAll('_', ' ')} · confidence ${proposal.confidence.toFixed(2)} · basis: ${proposal.basis.join(', ') || 'unstated'}`);
+    console.log(`    ${proposal.reason}`);
     if (proposal.incrementalValue) console.log(`    adds: ${proposal.incrementalValue}`);
-    if (proposal.expectedYield) console.log(`    yield: ${proposal.expectedYield}`);
+    console.log(`    expected yield: ${proposal.expectedYield}`);
     for (const caveat of proposal.caveats) console.log(`    caution: ${caveat}`);
     console.log('');
   }
