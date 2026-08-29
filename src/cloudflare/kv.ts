@@ -51,6 +51,77 @@ interface CloudflareResponse {
   errors?: Array<{ code: number; message: string }>;
 }
 
+/**
+ * Delete many keys at once, for a feed that has been permanently retired.
+ * `push` itself never deletes — it only writes changed keys — because a
+ * missing entry in one run must not be mistaken for "this feed is gone."
+ * Removing keys is therefore a deliberate, separate action.
+ */
+export async function kvBulkDelete(config: CloudflareConfig, keys: string[]): Promise<number> {
+  if (config.useWrangler) return kvBulkDeleteViaWrangler(config, keys);
+
+  let deleted = 0;
+  for (const batch of chunk(keys, 5000)) {
+    const res = await fetch(
+      `https://api.cloudflare.com/client/v4/accounts/${config.accountId}/storage/kv/namespaces/${config.kvNamespaceId}/bulk/delete`,
+      {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${config.apiToken}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify(batch),
+      },
+    );
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`KV bulk delete failed: HTTP ${res.status} ${text.slice(0, 400)}`);
+    }
+    const body = (await res.json()) as CloudflareResponse;
+    if (!body.success) {
+      throw new Error(`KV bulk delete rejected: ${JSON.stringify(body.errors ?? []).slice(0, 400)}`);
+    }
+    deleted += batch.length;
+    log.debug(`deleted ${batch.length} KV keys`);
+  }
+  return deleted;
+}
+
+async function kvBulkDeleteViaWrangler(config: CloudflareConfig, keys: string[]): Promise<number> {
+  const { execFile } = await import('node:child_process');
+  const { promisify } = await import('node:util');
+  const { writeFile, rm, mkdtemp } = await import('node:fs/promises');
+  const { join } = await import('node:path');
+  const { tmpdir } = await import('node:os');
+  const run = promisify(execFile);
+
+  let deleted = 0;
+  const dir = await mkdtemp(join(tmpdir(), 'sift-kv-delete-'));
+  try {
+    for (const batch of chunk(keys, 5000)) {
+      const file = join(dir, `batch-${deleted}.json`);
+      await writeFile(file, JSON.stringify(batch));
+      try {
+        await run(
+          'npx',
+          ['--no-install', 'wrangler', 'kv', 'bulk', 'delete', file, `--namespace-id=${config.kvNamespaceId}`, '--remote', '--force'],
+          { cwd: WORKER_DIR, maxBuffer: 8 * 1024 * 1024 },
+        );
+      } catch (err) {
+        const detail = err as { stderr?: string; stdout?: string; message?: string };
+        throw new Error(
+          `KV bulk delete via wrangler failed: ${(detail.stderr || detail.stdout || detail.message || '').slice(0, 500)}`,
+        );
+      }
+      deleted += batch.length;
+      log.debug(`deleted ${batch.length} KV keys via wrangler`);
+    }
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+  return deleted;
+}
+
 /** Write many keys at once. The bulk endpoint accepts up to 10,000 per call. */
 export async function kvBulkWrite(config: CloudflareConfig, entries: KvEntry[]): Promise<number> {
   if (config.useWrangler) return kvBulkWriteViaWrangler(config, entries);

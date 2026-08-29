@@ -64,6 +64,8 @@
     "publish": "tsx src/cli/publish.ts",
     "pull": "tsx src/cli/pull.ts",
     "push": "tsx src/cli/push.ts",
+    "cloud:setup": "tsx src/cli/cloud-setup.ts",
+    "kv:retire": "tsx src/cli/kv-retire-feed.ts",
     "serve": "tsx src/cli/serve-and-schedule.ts",
     "service:install": "tsx src/cli/service.ts install",
     "service:uninstall": "tsx src/cli/service.ts uninstall",

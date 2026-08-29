@@ -40,6 +40,7 @@ describe('terminal and web UI stay in step', () => {
       'doctor',           // check the setup
       'serve',            // publish locally
       'export',           // publish statically
+      'cloud:setup',      // guided Cloudflare setup, so feeds work while the Mac sleeps
       'push',             // publish to Cloudflare
     ]) {
       expect(scripts[script], `missing npm script: ${script}`).toBeTruthy();
