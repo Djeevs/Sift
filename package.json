@@ -9,7 +9,6 @@
     ".github/workflows/ci.yml",
     ".env.example",
     "config/",
-    "docs/",
     "onboarding/",
     "profiles/example/",
     "prompts/",

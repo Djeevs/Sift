@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { extname, relative, resolve } from 'node:path';
 import { PROJECT_ROOT } from '../config/index.js';
+import { onboardingDossierSchema } from '../onboarding/index.js';
 
 const required = [
   'LICENSE',
@@ -57,7 +58,39 @@ if (!readme.includes('npm ci --registry=https://registry.npmjs.org/')) {
   failures.push('README install instructions do not override private npm registry environments');
 }
 const onboardingPrompt = readFileSync(resolve(PROJECT_ROOT, 'onboarding/chatgpt-profile-prompt.md'), 'utf8');
-for (const requiredText of ['"version": 3', 'Ask at most **three** follow-up questions', 'attention_selection_model', 'source_candidates']) {
+
+/**
+ * The prompt and the schema must agree on the dossier version.
+ *
+ * Asserted against the schema rather than a hardcoded number, because the
+ * hardcoded version is what broke this check: the contract moved 3 -> 5 and
+ * dropped `source_candidates`, and share-check kept failing on strings that
+ * were correct two contracts ago. A stale pre-publication gate is worse than
+ * none -- it fails for a reason nobody reads, so a real failure hides in the
+ * noise. This version cannot go stale.
+ */
+const promptVersion = Number(/"version":\s*(\d+)/.exec(onboardingPrompt)?.[1] ?? NaN);
+const versionField = (onboardingDossierSchema as unknown as {
+  shape: Record<string, { safeParse: (value: unknown) => { success: boolean } } | undefined>;
+}).shape.version;
+if (!versionField) {
+  failures.push('onboardingDossierSchema no longer has a "version" field');
+} else if (!Number.isFinite(promptVersion)) {
+  failures.push('ChatGPT onboarding prompt does not declare a dossier "version"');
+} else if (!versionField.safeParse(promptVersion).success) {
+  failures.push(
+    `ChatGPT onboarding prompt declares dossier version ${promptVersion}, which onboardingDossierSchema rejects`,
+  );
+}
+
+// Contract fields and the output discipline, not prose. Wording gets edited;
+// these are what a downstream model actually depends on.
+for (const requiredText of [
+  'reading_goal',
+  'attention_selection_model',
+  'contextual_interests',
+  'exactly one valid JSON object',
+]) {
   if (!onboardingPrompt.includes(requiredText)) failures.push(`ChatGPT onboarding prompt is missing: ${requiredText}`);
 }
 

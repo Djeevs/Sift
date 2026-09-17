@@ -1,8 +1,7 @@
 # Sift
 
-> Continuing development from the August 2026 implementation session? Start
-> with [`docs/SESSION-HANDOFF.md`](docs/SESSION-HANDOFF.md), then read
-> `CLAUDE.md` for engineering invariants.
+> Working on the code? Read `CLAUDE.md` for the engineering invariants before
+> changing anything in the ranking path.
 
 A private, AI-assisted editorial desk for the internet. It sits between public
 RSS/podcast feeds, bounded Hacker News discovery, Product Hunt and Reeder, and

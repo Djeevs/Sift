@@ -2,14 +2,19 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-This checkout is a Git repository (`main`, private remote `origin`). Use
+This checkout is a Git repository (`main`, **public** remote `origin`). Use
 `git diff` and `git log`; changes are recoverable. Private files — `.env`,
-`worker/wrangler.toml`, `worker/.dev.vars`, `data/`, and non-example profiles —
-are gitignored and must stay that way.
+`worker/wrangler.toml`, `worker/.dev.vars`, `data/`, non-example profiles, and
+`docs/` — are gitignored and must stay that way. The remote is public, so
+treat every commit as published: there is no private staging area, and
+`npm run share-check` is the gate to run before pushing.
 
-Read `docs/SESSION-HANDOFF.md` (short) for operational state: profiles,
-deployment, private files, known gaps. Read `README.md` only in ranges — see
-*Navigation* at the end of this file. Do not read it whole; it is ~12k tokens.
+`docs/SESSION-HANDOFF.md` holds operational state — profiles, deployment,
+private files, known gaps. It is **local-only and untracked**: it is addressed
+to whoever runs this instance, not to someone reading the project. Read it if
+it exists; do not expect it in a fresh clone, and do not commit it. Read
+`README.md` only in ranges — see *Navigation* at the end of this file. Do not
+read it whole; it is ~12k tokens.
 
 ## What this is
 

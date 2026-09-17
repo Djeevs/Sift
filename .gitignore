@@ -23,3 +23,10 @@ sift-*.tgz
 
 # Built application bundle; regenerate with `npm run app:build`.
 build/
+
+# Owner-operational notes, deliberately not published. These are addressed to
+# whoever runs this instance -- deployment shape, profile names, live known
+# gaps -- rather than to someone reading the project, so they stay on disk and
+# out of the repository.
+docs/SESSION-HANDOFF.md
+docs/history/
